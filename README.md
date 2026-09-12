@@ -54,6 +54,9 @@ The site is a single continuous scrolling page (no client-side router) covering 
 
 ```
 fff/
+├── api/
+│   └── index.js                 Vercel serverless entry point (wraps server/src/app.js)
+├── vercel.json                  Single-project build/routing config (client build + API function)
 ├── client/                      React app (Vite)
 │   ├── src/
 │   │   ├── components/          One component per page section (Hero, Catalogue, Gallery, Process, Mill, People, Proof, Reviews, Faq, Contact, Footer, WhyUs, QuoteBanner, Header, etc.)
@@ -69,8 +72,9 @@ fff/
 │   └── .env.example
 ├── server/                      Express API
 │   └── src/
-│       ├── server.js            App entry point, CORS, rate limiting, routes
-│       ├── config/db.js         MongoDB connection
+│       ├── app.js               Express app: CORS, rate limiting, routes (no .listen — used by both server.js and api/index.js)
+│       ├── server.js            Traditional entry point (`npm start`): connects DB, then app.listen()
+│       ├── config/db.js         MongoDB connection (cached for serverless reuse)
 │       ├── models/Enquiry.js    Mongoose schema
 │       ├── controllers/enquiryController.js
 │       ├── routes/enquiryRoutes.js
@@ -156,24 +160,28 @@ The client build is a static bundle (`client/dist`) that can be served by any st
 
 ## Deployment
 
-### Frontend — Vercel
+The whole project deploys as a **single Vercel project**: the `client/` app builds to a static bundle, and the `server/` Express app is wrapped (via `api/index.js`, see below) as a Vercel serverless function, both served from the same domain. Configured by the root `vercel.json`:
 
-The `client/` app is a standard Vite project and deploys to Vercel with zero custom config:
-
-- **Root Directory:** `client`
-- **Framework Preset:** Vite
-- **Build Command:** `npm run build`
-- **Output Directory:** `dist`
-- **Install Command:** `npm install`
-- **Environment Variable:** `VITE_API_URL` → the public URL of your deployed backend API (e.g. `https://your-api-host.com/api`)
+- **Root Directory:** repository root (`.`)
+- **Install Command:** `npm run install:all` (installs `client/` and `server/` dependencies)
+- **Build Command:** `npm run build` (builds `client/` into `client/dist`)
+- **Output Directory:** `client/dist`
+- **API routes:** any request to `/api/*` is routed to the single serverless function at `api/index.js`, which imports the same Express app (`server/src/app.js`) used by the traditional `npm start` entry point — no route logic is duplicated between the two.
 - **Production branch:** `main`
 
-### Backend — not Vercel
+### Required environment variables (set in the Vercel project, not committed)
 
-The `server/` app is a standalone Express + MongoDB API (a persistent process), not a set of serverless functions, so it is **not deployed to Vercel** as part of this repository. Host it on a Node-friendly platform (Render, Railway, Fly.io, a VPS, etc.) and point the frontend's `VITE_API_URL` at it. It needs `PORT`, `MONGODB_URI` (e.g. a MongoDB Atlas cluster), and `CLIENT_ORIGIN` (set to your deployed frontend's URL, for CORS) configured on that platform.
+| Variable         | Where          | Value                                                                 |
+|------------------|----------------|-------------------------------------------------------------------------|
+| `MONGODB_URI`    | Vercel project | A MongoDB connection string (e.g. MongoDB Atlas). **Not yet configured** — see [Known Issues](#known-issues). |
+| `CLIENT_ORIGIN`  | Vercel project | The deployed site's own URL (CORS is same-origin in this single-project setup, so this mainly matters if the API is ever called cross-origin). |
+| `VITE_API_URL`   | Vercel project | `/api` — same-origin, so a relative path is enough; no absolute cross-origin URL needed. |
+
+`api/index.js` checks for `MONGODB_URI` at request time: if it's missing, `/api/health` still responds normally, but `/api/enquiries` returns `503` with a clear "not configured" error instead of crashing — so the frontend can deploy and go live before the database is wired up.
 
 ## Known Issues
 
+- **The production database is not yet wired up.** No `MONGODB_URI` has been configured in the Vercel project, so on the live deployment `/api/health` works but `/api/enquiries` (contact form + spec-sheet requests) returns `503`. To finish this: create a MongoDB Atlas cluster (or any reachable MongoDB instance), add its connection string as the `MONGODB_URI` environment variable on the Vercel project, and redeploy.
 - `GET /api/enquiries` has no authentication. If you deploy the backend publicly, add an auth check (API key, session, etc.) before exposing this route, or keep it internal-only.
 - The API only persists submissions to MongoDB — it does not send email notifications. Wire up an email provider (Nodemailer + SMTP, SES, SendGrid, etc.) in `server/src/controllers/enquiryController.js` if the technical desk needs to be notified directly.
 - No ESLint v9 flat config (`eslint.config.js`) exists yet in `client/`, so `npm run lint` cannot currently run.

@@ -1,0 +1,22 @@
+{
+  "name": "fluid-fibers-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Express + MongoDB API for the Fluid Fibers enquiry and spec-sheet request forms.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "mongoose": "^8.8.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}

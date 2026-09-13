@@ -146,7 +146,7 @@ export const PEOPLE = [
     bio: "Runs the mill floor and signs off every programme brief. Twenty years in ring spinning, most of it in quality.",
     links: [
       { label: "LinkedIn", href: "#" },
-      { label: "meera@fluidfibers.com", href: "#contact" }
+      { label: "fluidfancyenterprisepvtltd@gmail.com", href: "#contact" }
     ]
   },
   {
@@ -158,7 +158,7 @@ export const PEOPLE = [
     bio: "Handles quoting, documentation and shipping across six markets. Your first reply usually comes from him.",
     links: [
       { label: "LinkedIn", href: "#" },
-      { label: "arjun@fluidfibers.com", href: "#contact" }
+      { label: "fluidfancyenterprisepvtltd@gmail.com", href: "#contact" }
     ]
   },
   {
@@ -232,7 +232,7 @@ export const FAQS = [
 ];
 
 export const CONTACTS = [
-  { label: "Technical desk", value: "sales@fluidfibers.com", sub: "Replies within one working day" },
+  { label: "Technical desk", value: "fluidfancyenterprisepvtltd@gmail.com", sub: "Replies within one working day" },
   { label: "WhatsApp / phone", value: "+91 90000 00000", sub: "Mon–Sat, 9:00–18:00 IST" },
   { label: "Mill address", value: "Industrial Textile Zone", sub: "Manufacturing District, Global Hub" }
 ];
@@ -253,7 +253,7 @@ export const FOOTER_COLUMNS = [
     title: "Contact",
     links: [
       { label: "Enquiry form", href: "#contact" },
-      { label: "sales@fluidfibers.com", href: "#contact" },
+      { label: "fluidfancyenterprisepvtltd@gmail.com", href: "#contact" },
       { label: "+91 90000 00000", href: "#contact" }
     ]
   }

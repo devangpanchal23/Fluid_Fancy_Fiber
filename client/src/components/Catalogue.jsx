@@ -1,11 +1,60 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LINES } from "../data/content";
 import { images } from "../assets/images";
 import Corners from "./Corners";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+function resolveImage(url) {
+  return images[url] || url;
+}
+
+function fromApiProduct(p) {
+  return {
+    id: p._id,
+    name: p.name,
+    tag: p.tag || "",
+    body: p.description || p.shortDescription || "",
+    specs: (p.specs || []).map((s) => [s.key, s.value]),
+    image: p.images?.[0]?.url || "mill"
+  };
+}
+
+// Public catalogue: tries the live product API first, but falls back to the
+// site's built-in static lines if the API/database isn't reachable (e.g. no
+// MONGODB_URI configured yet) or returns nothing — the public page must
+// never break because of backend/database availability.
+function useCatalogueLines() {
+  const [lines, setLines] = useState(LINES);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/products?status=active&limit=50&sort=-featured`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((json) => {
+        if (cancelled) return;
+        const items = json?.data?.items;
+        if (Array.isArray(items) && items.length > 0) {
+          setLines(items.map(fromApiProduct));
+        }
+      })
+      .catch(() => {
+        // Keep the static fallback already in state.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return lines;
+}
+
 export default function Catalogue({ onOpenModal }) {
+  const lines = useCatalogueLines();
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(-1);
+
+  const activeIndex = Math.min(active, lines.length - 1);
 
   return (
     <section id="catalogue" className="ff-section">
@@ -20,9 +69,9 @@ export default function Catalogue({ onOpenModal }) {
 
         <div className="ff-catalogue-grid" data-reveal="up">
           <div className="ff-lines">
-            {LINES.map((line, i) => {
+            {lines.map((line, i) => {
               const isOpen = open === i;
-              const isActive = active === i;
+              const isActive = activeIndex === i;
               return (
                 <div key={line.id} className={`ff-line${isOpen ? " is-open" : ""}${isActive ? " is-active" : ""}`}>
                   <button
@@ -74,15 +123,15 @@ export default function Catalogue({ onOpenModal }) {
           <div className="ff-preview">
             <figure className="ff-preview-frame">
               <Corners />
-              {LINES.map((line, i) => (
-                <div key={line.id} className={`ff-preview-slot${active === i ? " is-active" : ""}`}>
-                  <img src={images[line.image]} alt={`${line.name} sample`} />
+              {lines.map((line, i) => (
+                <div key={line.id} className={`ff-preview-slot${activeIndex === i ? " is-active" : ""}`}>
+                  <img src={resolveImage(line.image)} alt={`${line.name} sample`} />
                 </div>
               ))}
             </figure>
             <div className="ff-preview-caption">
-              <span>{LINES[active].name}</span>
-              <span>Fig. {String(active + 2).padStart(2, "0")}</span>
+              <span>{lines[activeIndex]?.name}</span>
+              <span>Fig. {String(activeIndex + 2).padStart(2, "0")}</span>
             </div>
           </div>
         </div>

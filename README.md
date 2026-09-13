@@ -56,6 +56,7 @@ The catalogue shown on the public site is now backed by MongoDB — products are
 - `bcryptjs` — admin password hashing
 - `jsonwebtoken` — admin session tokens
 - `cookie-parser` — reads the `httpOnly` session cookie
+- `nodemailer` — sends enquiry-notification emails via Gmail SMTP
 - `cors` (origin restricted to the configured client URL, `credentials: true` for the session cookie)
 - `express-rate-limit` — 20 requests/15 min on the public enquiry-submission endpoint, 10 requests/15 min on admin login (separate limiters; the admin CMS's own authenticated calls are not throttled by either)
 - `dotenv` for environment configuration
@@ -107,7 +108,7 @@ fff/
 │       ├── controllers/          adminAuthController, categoryController, productController, enquiryController
 │       ├── routes/               adminAuthRoutes, categoryRoutes, productRoutes, enquiryRoutes
 │       ├── middleware/           auth (requireAdmin / attachAdminIfPresent), validateEnquiry, errorHandler
-│       ├── utils/                jwt.js (sign/verify), slugify.js
+│       ├── utils/                jwt.js (sign/verify), slugify.js, mailer.js (Gmail SMTP enquiry notifications)
 │       ├── scripts/              seedAdmin.js, migrateProducts.js
 │       └── __tests__/            Automated tests (node:test)
 │   └── .env.example
@@ -182,6 +183,9 @@ All responses use `{ success: true, data }` or `{ success: false, message, error
 | `ADMIN_EMAIL`    | Used only by `npm run seed:admin` to create/update the admin account | `admin@example.com` |
 | `ADMIN_PASSWORD` | Used only by `npm run seed:admin`. **Quote it** if it contains `#` or other special characters — dotenv treats an unquoted `#` as a comment and silently truncates the value | `"a-strong-password-#123"` |
 | `ADMIN_NAME`     | Optional display name for the seeded admin     | `Admin` |
+| `EMAIL_USER`     | Gmail address used to send contact-form/spec-sheet notifications (optional — see [Email Notifications](#email-notifications)) | `you@gmail.com` |
+| `EMAIL_PASS`     | A Gmail **App Password** for that account, not its regular password. Quote it — it contains spaces | `"abcd efgh ijkl mnop"` |
+| `NOTIFY_EMAIL`   | Who receives the notification. Defaults to `EMAIL_USER` if unset | `fluidfancyenterprisepvtltd@gmail.com` |
 
 `.env` files are git-ignored; only `.env.example` files are committed. No real credentials are present in this repository. `ADMIN_EMAIL`/`ADMIN_PASSWORD` are read only by the one-off seed script, not at request time — safe to remove from `.env` after seeding.
 
@@ -287,12 +291,20 @@ The whole project deploys as a **single Vercel project**: the `client/` app buil
 
 `api/index.js` checks for `MONGODB_URI` at request time: if it's missing, `/api/health` still responds normally, but every database-backed route (`/api/enquiries`, `/api/products`, `/api/categories`, `/api/admin/*`) returns `503` with a clear "not configured" error instead of crashing — so the frontend can deploy and go live before the database is wired up. Once `MONGODB_URI` and `JWT_SECRET` are set and the project is redeployed, run `npm run seed:admin` and `npm run migrate:products` **locally, pointed at that same production database** (temporarily set `MONGODB_URI` in your shell, or in `server/.env`, to the production connection string) to create the admin account and seed the catalogue.
 
+## Email Notifications
+
+When a visitor submits the contact form or requests a spec sheet, `server/src/controllers/enquiryController.js` still saves the submission to MongoDB first (unchanged), then fires off a notification email via Gmail SMTP (`server/src/utils/mailer.js`, using `nodemailer`) to `NOTIFY_EMAIL` — the email includes the submitter's name, company, email, message/product line, and a `reply-to` set to the submitter so you can reply directly from your inbox.
+
+This is entirely best-effort and asynchronous: the visitor's response is sent immediately after the database save, and the email send happens after that — a slow or failed email never delays or breaks the form submission. If `EMAIL_USER`/`EMAIL_PASS` aren't configured, it just logs a warning and skips sending.
+
+Setup: enable 2-Step Verification on the sending Gmail account, generate an **App Password** (Google Account → Security → App passwords — a 16-character code, not your login password), and set `EMAIL_USER`/`EMAIL_PASS`/`NOTIFY_EMAIL` (see [Environment Variables](#environment-variables)).
+
 ## Known Issues
 
 - **The production database is not yet wired up.** No `MONGODB_URI`/`JWT_SECRET` have been configured in the Vercel project, so on the live deployment `/api/health` works but every database-backed route (enquiries, products, categories, admin login) returns `503`. See [Deployment](#deployment) for the exact steps to finish this.
 - `PUT/DELETE /api/products/:id`, `/api/categories/:id`, `/api/enquiries/:id` etc. all require the admin session cookie now — this was previously unauthenticated for enquiries and did not exist at all for products/categories.
 - The `Product.images` field stores `{ url, alt }` pairs (a URL, or one of the bundled asset keys `hero`/`mill`/`logo` for content migrated from the original static catalogue) rather than uploaded files — see [Images](#images) for why, and for how to add real object storage later.
-- The API only persists enquiry submissions to MongoDB — it does not send email notifications. Wire up an email provider (Nodemailer + SMTP, SES, SendGrid, etc.) in `server/src/controllers/enquiryController.js` if the technical desk needs to be notified directly.
+- Email notifications (see [Email Notifications](#email-notifications)) are best-effort: if `EMAIL_USER`/`EMAIL_PASS` aren't set, or Gmail's SMTP rejects the send, the submission still saves to MongoDB and the visitor still gets a success response — only the notification email is skipped, with a warning logged server-side.
 - No ESLint v9 flat config (`eslint.config.js`) exists yet in `client/`, so `npm run lint` cannot currently run.
 - Team member photos are shown as initials on a tinted panel rather than real portraits — swap in photography via `client/src/data/content.js` (`PEOPLE`) plus an image mapping once available.
 - A dependency-tree `qs` package (a transitive dependency of Express itself, not something this project imports directly) has a known moderate-severity advisory; `npm audit fix` doesn't resolve it without an Express major-version bump, which was judged out of scope here.
@@ -304,7 +316,6 @@ Per the "don't store raw image files in MongoDB" requirement, `Product.images` s
 ## Future Improvements
 
 - Wire up real object storage (see [Images](#images)) so the admin can upload files directly instead of pasting URLs.
-- Add outbound email notifications for new enquiries.
 - Add an ESLint flat config for the client.
 - A client-side test suite (component tests for the admin CMS) — the server has one now (see [Testing](#testing)), the client doesn't yet.
 - Support multiple admin accounts / roles (currently a single shared admin account, by design, per the "no public signup" requirement).

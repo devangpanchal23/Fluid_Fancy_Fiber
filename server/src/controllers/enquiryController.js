@@ -1,4 +1,5 @@
 import Enquiry from "../models/Enquiry.js";
+import { sendEnquiryNotification } from "../utils/mailer.js";
 
 const STATUSES = ["new", "in_progress", "contacted", "closed", "archived"];
 
@@ -15,6 +16,10 @@ export async function createEnquiry(req, res, next) {
           : "Enquiry logged. Our technical desk replies within one working day.",
       id: enquiry._id
     });
+    // Fire-and-forget: the submission already succeeded and was saved above;
+    // a slow or failed notification email must never affect the response
+    // already sent to the visitor.
+    sendEnquiryNotification(enquiry);
   } catch (err) {
     next(err);
   }

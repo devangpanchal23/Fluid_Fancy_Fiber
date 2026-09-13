@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { LINES } from "../data/content";
 import { images } from "../assets/images";
+import { getApiBase } from "../apiBase";
 import Corners from "./Corners";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL = getApiBase();
 
 function resolveImage(url) {
   return images[url] || url;

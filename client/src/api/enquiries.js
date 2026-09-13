@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { getApiBase } from "../apiBase";
+
+const API_URL = getApiBase();
 
 async function postJSON(path, body) {
   const res = await fetch(`${API_URL}${path}`, {

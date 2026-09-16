@@ -16,7 +16,7 @@ export default function ProductList() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
-  const [sort, setSort] = useState("-createdAt");
+  const [sort, setSort] = useState("order");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -25,30 +25,36 @@ export default function ProductList() {
     api.get("/categories").then((d) => setCategories(d.categories)).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  function load() {
     setLoading(true);
     setError("");
     api
       .get("/products", { q, status, category, sort, page, limit: 12 })
       .then((d) => {
-        if (cancelled) return;
         setItems(d.items);
         setTotal(d.total);
         setPages(d.pages);
       })
-      .catch((err) => !cancelled && setError(err.message))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [q, status, category, sort, page]);
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, [q, status, category, sort, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function resetPage(setter) {
     return (value) => {
       setter(value);
       setPage(1);
     };
+  }
+
+  async function reorder(product, direction) {
+    try {
+      await api.put(`/products/${product._id}/reorder`, { direction });
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    }
   }
 
   async function confirmDelete() {
@@ -89,6 +95,7 @@ export default function ProductList() {
           ))}
         </select>
         <select value={sort} onChange={(e) => setSort(e.target.value)}>
+          <option value="order">Display order</option>
           <option value="-createdAt">Newest first</option>
           <option value="createdAt">Oldest first</option>
           <option value="name">Name A–Z</option>
@@ -109,29 +116,39 @@ export default function ProductList() {
           <table className="ff-admin-table">
             <thead>
               <tr>
-                <th>Product</th>
-                <th>SKU</th>
+                <th>Product / Type</th>
                 <th>Category</th>
                 <th>Status</th>
                 <th>Featured</th>
+                {sort === "order" && <th aria-label="Order" />}
                 <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
-              {items.map((p) => (
+              {items.map((p, i) => (
                 <tr key={p._id}>
                   <td>
                     <Link to={`/admin/products/${p._id}/edit`} className="ff-admin-table-title">
                       {p.name}
                     </Link>
                   </td>
-                  <td>{p.sku}</td>
                   <td>{p.category?.name || "—"}</td>
                   <td>
                     <span className={`ff-admin-badge ff-admin-badge--${p.status}`}>{p.status}</span>
                   </td>
                   <td>{p.featured ? "★" : ""}</td>
+                  {sort === "order" && (
+                    <td className="ff-admin-table-reorder">
+                      <button type="button" onClick={() => reorder(p, "up")} disabled={i === 0} aria-label="Move up">
+                        ↑
+                      </button>
+                      <button type="button" onClick={() => reorder(p, "down")} disabled={i === items.length - 1} aria-label="Move down">
+                        ↓
+                      </button>
+                    </td>
+                  )}
                   <td className="ff-admin-table-actions">
+                    <Link to={`/admin/products/${p._id}/variants`}>Variants</Link>
                     <Link to={`/admin/products/${p._id}/edit`}>Edit</Link>
                     {p.status !== "archived" && (
                       <button type="button" onClick={() => setPendingDelete(p)}>

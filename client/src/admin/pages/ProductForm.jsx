@@ -2,22 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import ProductImageUploader from "../components/ProductImageUploader";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ProductImageUploader from "../components/ProductImageUploader";
 
 const EMPTY = {
-  sku: "",
   name: "",
   category: "",
   tag: "",
   shortDescription: "",
   description: "",
-  yarnType: "",
-  composition: "",
-  count: "",
-  specs: [],
   features: [],
-  applications: [],
   images: [],
   status: "draft",
   featured: false
@@ -35,9 +29,9 @@ export default function ProductForm() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [imagesUploading, setImagesUploading] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [featuresText, setFeaturesText] = useState("");
-  const [applicationsText, setApplicationsText] = useState("");
 
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initial), [form, initial]);
 
@@ -54,18 +48,12 @@ export default function ProductForm() {
         if (cancelled) return;
         const p = d.product;
         const loaded = {
-          sku: p.sku,
           name: p.name,
           category: p.category?._id || p.category,
           tag: p.tag || "",
           shortDescription: p.shortDescription || "",
           description: p.description || "",
-          yarnType: p.yarnType || "",
-          composition: p.composition || "",
-          count: p.count || "",
-          specs: p.specs || [],
           features: p.features || [],
-          applications: p.applications || [],
           images: p.images || [],
           status: p.status,
           featured: p.featured
@@ -73,7 +61,6 @@ export default function ProductForm() {
         setForm(loaded);
         setInitial(loaded);
         setFeaturesText((p.features || []).join(", "));
-        setApplicationsText((p.applications || []).join(", "));
       })
       .catch((err) => toast.error(err.message))
       .finally(() => !cancelled && setLoading(false));
@@ -97,31 +84,19 @@ export default function ProductForm() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
-  function updateSpec(i, key, value) {
-    setForm((f) => {
-      const specs = [...f.specs];
-      specs[i] = { ...specs[i], [key]: value };
-      return { ...f, specs };
-    });
-  }
-  function addSpec() {
-    setForm((f) => ({ ...f, specs: [...f.specs, { key: "", value: "" }] }));
-  }
-  function removeSpec(i) {
-    setForm((f) => ({ ...f, specs: f.specs.filter((_, idx) => idx !== i) }));
-  }
-
   function buildPayload(status) {
     return {
       ...form,
       status,
-      features: featuresText.split(",").map((s) => s.trim()).filter(Boolean),
-      applications: applicationsText.split(",").map((s) => s.trim()).filter(Boolean),
-      specs: form.specs.filter((s) => s.key.trim() && s.value.trim())
+      features: featuresText.split(",").map((s) => s.trim()).filter(Boolean)
     };
   }
 
   async function save(status) {
+    if (imagesUploading) {
+      toast.error("Please wait for the image upload to finish before saving.");
+      return;
+    }
     setErrors({});
     setSaving(true);
     const payload = buildPayload(status);
@@ -129,12 +104,15 @@ export default function ProductForm() {
       if (isEdit) {
         await api.put(`/products/${id}`, payload);
         toast.success("Product updated.");
+        setInitial(form);
+        navigate("/admin/products");
       } else {
-        await api.post("/products", payload);
+        const { product } = await api.post("/products", payload);
         toast.success(status === "active" ? "Product published." : "Draft saved.");
+        setInitial(form);
+        // Straight into managing its variants — a new Type has none yet.
+        navigate(`/admin/products/${product._id}/variants`);
       }
-      setInitial(form);
-      navigate("/admin/products");
     } catch (err) {
       if (err instanceof ApiError && err.errors) setErrors(err.errors);
       toast.error(err.message);
@@ -158,15 +136,9 @@ export default function ProductForm() {
   return (
     <form className="ff-admin-form" onSubmit={onSubmit}>
       <div className="ff-admin-form-grid">
-        <label className={`ff-field${errors.sku ? " has-error" : ""}`}>
-          <span className="ff-field-label">SKU</span>
-          <input value={form.sku} onChange={(e) => set("sku", e.target.value)} required />
-          <span className="ff-field-error">{errors.sku || ""}</span>
-        </label>
-
         <label className={`ff-field${errors.name ? " has-error" : ""}`}>
           <span className="ff-field-label">Name</span>
-          <input value={form.name} onChange={(e) => set("name", e.target.value)} required />
+          <input value={form.name} onChange={(e) => set("name", e.target.value)} required placeholder="e.g. Polyester" />
           <span className="ff-field-error">{errors.name || ""}</span>
         </label>
 
@@ -186,21 +158,6 @@ export default function ProductForm() {
         <label className="ff-field">
           <span className="ff-field-label">Tag / positioning</span>
           <input value={form.tag} onChange={(e) => set("tag", e.target.value)} placeholder="e.g. Premium synthetic" />
-        </label>
-
-        <label className="ff-field">
-          <span className="ff-field-label">Yarn type</span>
-          <input value={form.yarnType} onChange={(e) => set("yarnType", e.target.value)} />
-        </label>
-
-        <label className="ff-field">
-          <span className="ff-field-label">Composition</span>
-          <input value={form.composition} onChange={(e) => set("composition", e.target.value)} />
-        </label>
-
-        <label className="ff-field">
-          <span className="ff-field-label">Count range</span>
-          <input value={form.count} onChange={(e) => set("count", e.target.value)} placeholder="e.g. 30s – 60s" />
         </label>
 
         <label className="ff-field ff-field--checkbox">
@@ -224,31 +181,17 @@ export default function ProductForm() {
         <input value={featuresText} onChange={(e) => setFeaturesText(e.target.value)} />
       </label>
 
-      <label className="ff-field">
-        <span className="ff-field-label">Applications (comma-separated)</span>
-        <input value={applicationsText} onChange={(e) => setApplicationsText(e.target.value)} />
-      </label>
-
-      <fieldset className="ff-admin-fieldset">
-        <legend>Specifications</legend>
-        {form.specs.map((s, i) => (
-          <div className="ff-admin-spec-row" key={i}>
-            <input placeholder="Label" value={s.key} onChange={(e) => updateSpec(i, "key", e.target.value)} />
-            <input placeholder="Value" value={s.value} onChange={(e) => updateSpec(i, "value", e.target.value)} />
-            <button type="button" onClick={() => removeSpec(i)} aria-label="Remove spec">
-              ×
-            </button>
-          </div>
-        ))}
-        <button type="button" className="ff-btn ff-btn-ghost" onClick={addSpec}>
-          + Add spec
-        </button>
-      </fieldset>
-
       <fieldset className="ff-admin-fieldset">
         <legend>Images</legend>
-        <ProductImageUploader images={form.images} onChange={(images) => set("images", images)} />
+        <ProductImageUploader images={form.images} onChange={(images) => set("images", images)} onUploadingChange={setImagesUploading} />
+        <p className="ff-admin-hint">
+          Used as the catalogue preview when a selected Variant has no image of its own. The first image is the primary/featured one.
+        </p>
       </fieldset>
+
+      <p className="ff-admin-hint">
+        SKU, composition, count range, application and other specifications are set per-variant — save this Type first, then add its Variants.
+      </p>
 
       <div className="ff-admin-form-actions">
         <button type="button" className="ff-btn ff-btn-ghost" onClick={handleCancel} disabled={saving}>
@@ -257,14 +200,14 @@ export default function ProductForm() {
         <button
           type="button"
           className="ff-btn ff-btn-ghost"
-          disabled={saving}
+          disabled={saving || imagesUploading}
           onClick={() => save("draft")}
         >
-          Save draft
+          {imagesUploading ? "Uploading image…" : "Save draft"}
         </button>
-        <button type="button" className="ff-btn ff-btn-primary" disabled={saving} onClick={() => save("active")}>
+        <button type="button" className="ff-btn ff-btn-primary" disabled={saving || imagesUploading} onClick={() => save("active")}>
           {saving && <span className="ff-btn-spinner" />}
-          <span>Publish</span>
+          <span>{imagesUploading ? "Uploading image…" : "Publish"}</span>
         </button>
       </div>
 

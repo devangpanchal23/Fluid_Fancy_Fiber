@@ -1,13 +1,14 @@
-// One-off migration: seeds Category + Product documents from the site's
-// existing static catalogue (client/src/data/content.js LINES) so MongoDB
-// becomes the source of truth without losing any existing content.
-// Safe to re-run: matches on SKU and only creates what's missing.
+// One-off migration: seeds Category + Product(Type) + Variant documents from
+// the site's original static catalogue (client/src/data/content.js LINES) so
+// MongoDB becomes the source of truth without losing any existing content.
+// Safe to re-run: matches on Variant SKU and only creates what's missing.
 // Run with: npm run migrate:products
 import "dotenv/config";
 import mongoose from "mongoose";
 import { connectDB } from "../config/db.js";
 import Category from "../models/Category.js";
 import Product from "../models/Product.js";
+import Variant from "../models/Variant.js";
 import { slugify } from "../utils/slugify.js";
 
 // Mirrors client/src/data/content.js LINES — kept in sync manually since the
@@ -23,9 +24,6 @@ const LINES = [
     shortDescription: "Engineered for absolute uniformity and high tensile strength.",
     description:
       "Engineered for absolute uniformity and high tensile strength — built for technical textiles and fast processing speeds.",
-    composition: "100% Polyester",
-    count: "30s – 60s",
-    applications: ["Warp & weft"],
     specs: [
       { key: "Composition", value: "100% Polyester" },
       { key: "Count range", value: "30s – 60s" },
@@ -41,9 +39,6 @@ const LINES = [
     shortDescription: "Linen's breathability with added durability.",
     description:
       "Linen's breathability with added durability — a shirting and luxury-apparel workhorse that holds its hand after washing.",
-    composition: "Linen / viscose",
-    count: "20s – 40s",
-    applications: ["Luxury shirting"],
     specs: [
       { key: "Composition", value: "Linen / viscose" },
       { key: "Count range", value: "20s – 40s" },
@@ -58,9 +53,6 @@ const LINES = [
     shortDescription: "Core-spun construction giving elasticity under a natural sheath.",
     description:
       "Core-spun construction giving elasticity under a natural sheath, for stretch denim and comfort knits.",
-    composition: "Core-spun blend",
-    count: "16s – 32s",
-    applications: ["Stretch denim"],
     specs: [
       { key: "Composition", value: "Core-spun blend" },
       { key: "Count range", value: "16s – 32s" },
@@ -75,9 +67,6 @@ const LINES = [
     shortDescription: "Controlled slub profiles programmed per metre.",
     description:
       "Controlled slub profiles programmed per metre, so the texture reads as intentional across the whole run.",
-    composition: "",
-    count: "10s – 30s",
-    applications: ["Fashion wovens"],
     specs: [
       { key: "Profile", value: "Programmed to brief" },
       { key: "Count range", value: "10s – 30s" },
@@ -92,9 +81,6 @@ const LINES = [
     shortDescription: "Pre-warped beams to your loom's exact specification.",
     description:
       "Pre-warped beams to your loom's exact specification, cutting changeover time and beam-gaiting errors.",
-    composition: "",
-    count: "",
-    applications: ["Direct to loom"],
     specs: [
       { key: "Width", value: "Up to 220 cm" },
       { key: "Ends", value: "Custom to order" },
@@ -118,31 +104,38 @@ async function main() {
   let created = 0;
   let skipped = 0;
   for (const line of LINES) {
-    const existing = await Product.findOne({ sku: line.sku });
-    if (existing) {
+    const existingVariant = await Variant.findOne({ sku: line.sku });
+    if (existingVariant) {
       skipped += 1;
       continue;
     }
-    await Product.create({
+
+    let product = await Product.findOne({ slug: slugify(line.name), category: category._id });
+    if (!product) {
+      product = await Product.create({
+        slug: slugify(line.name),
+        name: line.name,
+        category: category._id,
+        tag: line.tag,
+        shortDescription: line.shortDescription,
+        description: line.description,
+        status: "active",
+        featured: Boolean(line.featured)
+      });
+    }
+
+    await Variant.create({
+      product: product._id,
+      name: "Default",
       sku: line.sku,
-      slug: slugify(line.name),
-      name: line.name,
-      category: category._id,
-      tag: line.tag,
-      shortDescription: line.shortDescription,
-      description: line.description,
-      composition: line.composition,
-      count: line.count,
       specs: line.specs,
-      applications: line.applications,
       images: line.images,
-      status: "active",
-      featured: Boolean(line.featured)
+      isActive: true
     });
     created += 1;
   }
 
-  console.log(`[migrate] Done. Created ${created}, skipped ${skipped} (already existed).`);
+  console.log(`[migrate] Done. Created ${created} variant(s), skipped ${skipped} (already existed).`);
   await mongoose.disconnect();
   process.exit(0);
 }

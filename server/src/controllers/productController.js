@@ -1,5 +1,6 @@
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
+import Variant from "../models/Variant.js";
 import { slugify } from "../utils/slugify.js";
 
 const STATUSES = ["draft", "active", "archived"];
@@ -17,7 +18,7 @@ async function assertCategoryExists(categoryId) {
 export async function listProducts(req, res, next) {
   try {
     const isAdmin = Boolean(req.admin);
-    const { q, category, status, featured, page = 1, limit = 20, sort = "-createdAt" } = req.query;
+    const { q, category, status, featured, page = 1, limit = 20, sort = "order -featured" } = req.query;
 
     const filter = {};
     if (!isAdmin) {
@@ -65,15 +66,15 @@ export async function getProduct(req, res, next) {
 
 function validateProductBody(body, { partial = false } = {}) {
   const errors = {};
-  const required = ["sku", "name", "category"];
+  const required = ["name", "category"];
   if (!partial) {
     for (const field of required) {
       if (!body[field] || !String(body[field]).trim()) errors[field] = "Required.";
     }
   }
   if (body.status && !STATUSES.includes(body.status)) errors.status = "Invalid status.";
+  if (body.features && !Array.isArray(body.features)) errors.features = "Features must be a list.";
   if (body.images && !Array.isArray(body.images)) errors.images = "Images must be a list.";
-  if (body.specs && !Array.isArray(body.specs)) errors.specs = "Specs must be a list.";
   return errors;
 }
 
@@ -86,33 +87,23 @@ export async function createProduct(req, res, next) {
     }
     await assertCategoryExists(body.category);
 
-    const sku = String(body.sku).trim().toUpperCase();
     const slug = body.slug ? slugify(body.slug) : slugify(body.name);
-
-    const [skuClash, slugClash] = await Promise.all([
-      Product.findOne({ sku }),
-      Product.findOne({ slug })
-    ]);
-    if (skuClash) return res.status(409).json({ success: false, message: "A product with this SKU already exists.", errors: { sku: "Already in use." } });
+    const slugClash = await Product.findOne({ slug });
     if (slugClash) return res.status(409).json({ success: false, message: "A product with this slug already exists.", errors: { slug: "Already in use." } });
 
+    const count = await Product.countDocuments();
     const product = await Product.create({
-      sku,
       slug,
       name: String(body.name).trim(),
       category: body.category,
       tag: body.tag || "",
       shortDescription: body.shortDescription || "",
       description: body.description || "",
-      yarnType: body.yarnType || "",
-      composition: body.composition || "",
-      count: body.count || "",
-      specs: body.specs || [],
       features: body.features || [],
-      applications: body.applications || [],
       images: body.images || [],
       status: body.status || "draft",
-      featured: Boolean(body.featured)
+      featured: Boolean(body.featured),
+      order: body.order !== undefined ? body.order : count
     });
 
     res.status(201).json({ success: true, data: { product } });
@@ -134,12 +125,6 @@ export async function updateProduct(req, res, next) {
     }
     if (body.category) await assertCategoryExists(body.category);
 
-    if (body.sku) {
-      const sku = String(body.sku).trim().toUpperCase();
-      const clash = await Product.findOne({ sku, _id: { $ne: product._id } });
-      if (clash) return res.status(409).json({ success: false, message: "A product with this SKU already exists.", errors: { sku: "Already in use." } });
-      product.sku = sku;
-    }
     if (body.slug || body.name) {
       const slug = slugify(body.slug || body.name);
       const clash = await Product.findOne({ slug, _id: { $ne: product._id } });
@@ -147,16 +132,38 @@ export async function updateProduct(req, res, next) {
       product.slug = slug;
     }
 
-    const assignable = [
-      "name", "category", "tag", "shortDescription", "description", "yarnType",
-      "composition", "count", "specs", "features", "applications", "images",
-      "status", "featured"
-    ];
+    const assignable = ["name", "category", "tag", "shortDescription", "description", "features", "images", "status", "featured", "order"];
     for (const field of assignable) {
       if (body[field] !== undefined) product[field] = body[field];
     }
 
     await product.save();
+    res.json({ success: true, data: { product } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function reorderProduct(req, res, next) {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found." });
+    }
+    const { direction } = req.body || {};
+    if (direction !== "up" && direction !== "down") {
+      return res.status(400).json({ success: false, message: "direction must be 'up' or 'down'." });
+    }
+    const neighbor = await Product.findOne({ order: { [direction === "up" ? "$lt" : "$gt"]: product.order } }).sort({
+      order: direction === "up" ? -1 : 1
+    });
+    if (!neighbor) {
+      return res.json({ success: true, data: { product } });
+    }
+    const tmp = product.order;
+    product.order = neighbor.order;
+    neighbor.order = tmp;
+    await Promise.all([product.save(), neighbor.save()]);
     res.json({ success: true, data: { product } });
   } catch (err) {
     next(err);
@@ -170,7 +177,7 @@ export async function deleteProduct(req, res, next) {
       return res.status(404).json({ success: false, message: "Product not found." });
     }
     if (req.query.hard === "true") {
-      await product.deleteOne();
+      await Promise.all([product.deleteOne(), Variant.deleteMany({ product: product._id })]);
       return res.json({ success: true, data: null });
     }
     product.status = "archived";

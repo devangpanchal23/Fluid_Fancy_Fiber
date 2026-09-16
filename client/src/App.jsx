@@ -8,6 +8,7 @@ import Ticker from "./components/Ticker";
 import QuoteBanner from "./components/QuoteBanner";
 import Catalogue from "./components/Catalogue";
 import Gallery from "./components/Gallery";
+import VideoGallery from "./components/VideoGallery";
 import Process from "./components/Process";
 import Mill from "./components/Mill";
 import People from "./components/People";
@@ -50,6 +51,7 @@ export default function App() {
       <QuoteBanner onOpenModal={openModal} />
       <Catalogue onOpenModal={openModal} />
       <Gallery />
+      <VideoGallery />
       <Process />
       <Mill />
       <People />

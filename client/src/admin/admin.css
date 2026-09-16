@@ -413,6 +413,33 @@
   text-underline-offset: 3px;
 }
 
+.ff-admin-table-reorder {
+  display: flex;
+  gap: 4px;
+}
+.ff-admin-table-reorder button {
+  border: 1px solid var(--ff-line-strong);
+  background: var(--ff-card);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1;
+}
+.ff-admin-table-reorder button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ff-admin-table-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border: 1px solid var(--ff-line-strong);
+  display: block;
+}
+.ff-admin-table-thumb--empty {
+  background: var(--ff-bg-alt);
+}
+
 .ff-admin-badge {
   display: inline-block;
   padding: 4px 10px;
@@ -604,6 +631,67 @@
   border: 1px solid var(--ff-line-strong);
   background: var(--ff-card);
   font-size: 13px;
+}
+
+.ff-admin-uploader {
+  max-width: 220px;
+}
+.ff-admin-uploader-dropzone {
+  width: 160px;
+  height: 120px;
+  border: 1px dashed var(--ff-line-strong);
+  background: var(--ff-bg-alt);
+  color: var(--ff-muted);
+  font-size: 12px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 8px;
+}
+.ff-admin-uploader-dropzone:hover:not(:disabled) {
+  border-color: var(--ff-accent);
+  color: var(--ff-ink);
+}
+.ff-admin-uploader-dropzone:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.ff-admin-uploader-preview {
+  position: relative;
+  width: 160px;
+}
+.ff-admin-uploader-preview img {
+  width: 160px;
+  height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--ff-line-strong);
+  background: var(--ff-bg-alt);
+  display: block;
+  margin-bottom: 6px;
+}
+.ff-admin-uploader-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--ff-line-strong);
+  border-top-color: var(--ff-accent);
+  border-radius: 50%;
+  animation: ff-admin-spin 800ms linear infinite;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+.ff-admin-progress-track {
+  width: 240px;
+  height: 4px;
+  background: var(--ff-line-strong);
+  margin-top: 8px;
+  overflow: hidden;
+}
+.ff-admin-progress-bar {
+  height: 100%;
+  background: var(--ff-accent);
+  transition: width 150ms linear;
 }
 
 /* ---------- confirm dialog / drawers ---------- */

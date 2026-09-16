@@ -39,11 +39,30 @@ async function request(path, { method = "GET", body, params } = {}) {
   return data?.data ?? data;
 }
 
+async function upload(path, formData) {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    credentials: "include",
+    body: formData
+  });
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    // empty body — leave data null
+  }
+  if (!res.ok || (data && data.success === false)) {
+    throw new ApiError(data?.message || "Upload failed. Please try again.", res.status, data?.errors);
+  }
+  return data?.data ?? data;
+}
+
 export const api = {
   get: (path, params) => request(path, { params }),
   post: (path, body) => request(path, { method: "POST", body }),
   put: (path, body) => request(path, { method: "PUT", body }),
-  delete: (path, params) => request(path, { method: "DELETE", params })
+  delete: (path, params) => request(path, { method: "DELETE", params }),
+  upload
 };
 
 export { ApiError };

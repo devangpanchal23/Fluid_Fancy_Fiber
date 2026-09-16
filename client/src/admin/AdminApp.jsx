@@ -8,6 +8,12 @@ import Dashboard from "./pages/Dashboard";
 import ProductList from "./pages/ProductList";
 import ProductForm from "./pages/ProductForm";
 import CategoryManager from "./pages/CategoryManager";
+import VariantList from "./pages/VariantList";
+import VariantForm from "./pages/VariantForm";
+import VideoList from "./pages/VideoList";
+import VideoForm from "./pages/VideoForm";
+import PersonList from "./pages/PersonList";
+import PersonForm from "./pages/PersonForm";
 import EnquiryList from "./pages/EnquiryList";
 import Settings from "./pages/Settings";
 import "./admin.css";
@@ -29,7 +35,16 @@ export default function AdminApp() {
             <Route path="products" element={<ProductList />} />
             <Route path="products/new" element={<ProductForm />} />
             <Route path="products/:id/edit" element={<ProductForm />} />
+            <Route path="products/:productId/variants" element={<VariantList />} />
+            <Route path="products/:productId/variants/new" element={<VariantForm />} />
+            <Route path="products/:productId/variants/:id/edit" element={<VariantForm />} />
             <Route path="categories" element={<CategoryManager />} />
+            <Route path="videos" element={<VideoList />} />
+            <Route path="videos/new" element={<VideoForm />} />
+            <Route path="videos/:id/edit" element={<VideoForm />} />
+            <Route path="people" element={<PersonList />} />
+            <Route path="people/new" element={<PersonForm />} />
+            <Route path="people/:id/edit" element={<PersonForm />} />
             <Route path="enquiries" element={<EnquiryList />} />
             <Route path="settings" element={<Settings />} />
           </Route>

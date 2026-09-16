@@ -5,7 +5,13 @@ import enquiryRoutes from "./routes/enquiryRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
+import personRoutes from "./routes/personRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
+import variantRoutes from "./routes/variantRoutes.js";
+import videoRoutes from "./routes/videoRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
+import { connectDB, isDbConnected } from "./config/db.js";
+import { UPLOAD_DIR } from "./utils/imageStorage.js";
 
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 
@@ -21,7 +27,36 @@ app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 
-app.get("/api/health", (req, res) => res.json({ ok: true, service: "fluid-fibers-api" }));
+// Serves locally-uploaded images (see server/src/utils/imageStorage.js). Only
+// durable in local/traditional hosting — see that file's header comment.
+app.use("/uploads", express.static(UPLOAD_DIR));
+
+app.get("/api/health", (req, res) => {
+  const dbConnected = isDbConnected();
+  res.json({
+    ok: true,
+    service: "fluid-fibers-api",
+    database: dbConnected ? "connected" : "disconnected"
+  });
+});
+
+// Database resilience guard: if MongoDB is disconnected, try to connect;
+// if still unavailable, return 503 instead of crashing or hanging the request.
+app.use("/api", async (req, res, next) => {
+  if (req.path === "/health") return next();
+  if (isDbConnected()) return next();
+  try {
+    await connectDB();
+    next();
+  } catch {
+    return res.status(503).json({
+      success: false,
+      error: "Database temporarily unavailable. Please retry in a moment.",
+      message: "Database temporarily unavailable. Please retry in a moment."
+    });
+  }
+});
+
 // The enquiry-submission rate limit is applied inside enquiryRoutes.js, scoped
 // to just the public POST route — it must not throttle the admin's own
 // authenticated GET/PUT/DELETE calls on the same router.
@@ -29,6 +64,10 @@ app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/admin", adminAuthRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/people", personRoutes);
+app.use("/api/uploads", uploadRoutes);
+app.use("/api/variants", variantRoutes);
+app.use("/api/videos", videoRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

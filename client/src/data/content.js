@@ -161,18 +161,18 @@ export const PEOPLE = [
       { label: "fluidfancyenterprisepvtltd@gmail.com", href: "#contact" }
     ]
   },
-  {
-    id: "team-2",
-    name: "Nisha Patel",
-    role: "Social & community",
-    tag: "Social media",
-    initials: "NP",
-    bio: "Posts the floor as it actually looks — lot photos, trial runs, shade cards. Message her anywhere and it reaches the mill.",
-    links: [
-      { label: "Instagram", href: "#" },
-      { label: "WhatsApp", href: "#contact" }
-    ]
-  }
+  // {
+  //   id: "team-2",
+  //   name: "Nisha Patel",
+  //   role: "Social & community",
+  //   tag: "Social media",
+  //   initials: "NP",
+  //   bio: "Posts the floor as it actually looks — lot photos, trial runs, shade cards. Message her anywhere and it reaches the mill.",
+  //   links: [
+  //     { label: "Instagram", href: "#" },
+  //     { label: "WhatsApp", href: "#contact" }
+  //   ]
+  // }
 ];
 
 export const REVIEWS = [

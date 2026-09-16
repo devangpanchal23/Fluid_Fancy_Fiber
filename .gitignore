@@ -8,3 +8,5 @@ build/
 .DS_Store
 .vercel/
 .claude/
+server/uploads/*
+!server/uploads/.gitkeep

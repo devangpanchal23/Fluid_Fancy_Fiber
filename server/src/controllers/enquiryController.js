@@ -18,8 +18,10 @@ export async function createEnquiry(req, res, next) {
     });
     // Fire-and-forget: the submission already succeeded and was saved above;
     // a slow or failed notification email must never affect the response
-    // already sent to the visitor.
-    sendEnquiryNotification(enquiry);
+    // already sent to the visitor or leave an unhandled rejection.
+    sendEnquiryNotification(enquiry).catch((mailErr) => {
+      console.warn("[mailer] Background notification dispatch failed:", mailErr?.message || mailErr);
+    });
   } catch (err) {
     next(err);
   }

@@ -10,11 +10,15 @@ export default function Dashboard() {
     let cancelled = false;
     async function load() {
       try {
-        const [active, draft, archived, enquiriesTotal, recentProducts, recentEnquiries] = await Promise.all([
+        const [active, draft, archived, enquiriesTotal, categoriesTotal, peopleTotal, variantsTotal, videosTotal, recentProducts, recentEnquiries] = await Promise.all([
           api.get("/products", { status: "active", limit: 1 }),
           api.get("/products", { status: "draft", limit: 1 }),
           api.get("/products", { status: "archived", limit: 1 }),
           api.get("/enquiries", { limit: 1 }),
+          api.get("/categories"),
+          api.get("/people", { limit: 1 }),
+          api.get("/variants", { limit: 1 }),
+          api.get("/videos", { limit: 1 }),
           api.get("/products", { limit: 5, sort: "-createdAt" }),
           api.get("/enquiries", { limit: 5 })
         ]);
@@ -25,6 +29,10 @@ export default function Dashboard() {
           archived: archived.total,
           total: active.total + draft.total + archived.total,
           enquiries: enquiriesTotal.total,
+          categories: categoriesTotal.categories.length,
+          people: peopleTotal.total,
+          variants: variantsTotal.total,
+          videos: videosTotal.total,
           recentProducts: recentProducts.items,
           recentEnquiries: recentEnquiries.items
         });
@@ -47,6 +55,10 @@ export default function Dashboard() {
         <StatCard label="Total products" value={stats.total} />
         <StatCard label="Active products" value={stats.active} />
         <StatCard label="Draft products" value={stats.draft} />
+        <StatCard label="Total variants" value={stats.variants} />
+        <StatCard label="Total categories" value={stats.categories} />
+        <StatCard label="Total videos" value={stats.videos} />
+        <StatCard label="Total people" value={stats.people} />
         <StatCard label="Total enquiries" value={stats.enquiries} />
       </div>
 
@@ -56,6 +68,12 @@ export default function Dashboard() {
         </Link>
         <Link to="/admin/categories" className="ff-btn ff-btn-ghost">
           Manage categories
+        </Link>
+        <Link to="/admin/videos/new" className="ff-btn ff-btn-ghost">
+          + New video
+        </Link>
+        <Link to="/admin/people/new" className="ff-btn ff-btn-ghost">
+          + New person
         </Link>
         <Link to="/admin/enquiries" className="ff-btn ff-btn-ghost">
           View enquiries

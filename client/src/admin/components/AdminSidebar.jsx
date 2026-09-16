@@ -4,6 +4,8 @@ const NAV = [
   { to: "/admin/dashboard", label: "Dashboard", icon: "grid" },
   { to: "/admin/products", label: "Products", icon: "box" },
   { to: "/admin/categories", label: "Categories", icon: "tag" },
+  { to: "/admin/videos", label: "Videos", icon: "video" },
+  { to: "/admin/people", label: "People", icon: "people" },
   { to: "/admin/enquiries", label: "Enquiries", icon: "mail" },
   { to: "/admin/settings", label: "Settings", icon: "gear" }
 ];
@@ -20,6 +22,12 @@ const ICONS = {
   ),
   mail: (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="5" width="18" height="14" rx="1" /><path d="m4 6 8 7 8-7" /></svg>
+  ),
+  people: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20c0-3.6 2.5-6 5.5-6s5.5 2.4 5.5 6" /><circle cx="17" cy="8.5" r="2.4" /><path d="M15.5 14.3c2.3.4 4 2.4 4 5.7" /></svg>
+  ),
+  video: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="6" width="13" height="12" rx="1.2" /><path d="m16 10 5-3v10l-5-3" /></svg>
   ),
   gear: (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="3.2" /><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.9-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4L4.6 10.5a7.6 7.6 0 0 0 0 3L2.7 15l2 3.4 2.3-.9c.77.66 1.65 1.17 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4Z" /></svg>

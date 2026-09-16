@@ -24,13 +24,28 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
   const Admin = (await import("../models/Admin.js")).default;
   const Category = (await import("../models/Category.js")).default;
   const Product = (await import("../models/Product.js")).default;
+  const Variant = (await import("../models/Variant.js")).default;
+  const Video = (await import("../models/Video.js")).default;
   const Enquiry = (await import("../models/Enquiry.js")).default;
+  const Person = (await import("../models/Person.js")).default;
+
+  // A stale unique index from before the Product/Variant split may still be
+  // sitting on this test database from an earlier run against the old flat
+  // schema — Product no longer has a sku field, so drop it if present.
+  try {
+    await mongoose.connection.db.collection("products").dropIndex("sku_1");
+  } catch (err) {
+    if (err.codeName !== "IndexNotFound" && err.codeName !== "NamespaceNotFound") throw err;
+  }
 
   await Promise.all([
     Admin.deleteMany({ email: /^test-admin@/ }),
     Category.deleteMany({ slug: /^test-/ }),
-    Product.deleteMany({ sku: /^TEST-/ }),
-    Enquiry.deleteMany({ email: /^test-enquiry@/ })
+    Product.deleteMany({ slug: /^test-/ }),
+    Variant.deleteMany({ sku: /^TEST-/ }),
+    Video.deleteMany({ title: /^Test Video/ }),
+    Enquiry.deleteMany({ email: /^test-enquiry@/ }),
+    Person.deleteMany({ name: /^Test Person/ })
   ]);
 
   const admin = new Admin({ email: "test-admin@example.com", name: "Test Admin" });
@@ -88,25 +103,18 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
   });
 
   let productId;
-  await t.test("creates a product", async () => {
+  await t.test("creates a product (Type) with its own image", async () => {
     const r = await req("/api/products", {
       method: "POST",
-      body: { sku: "TEST-SKU-1", name: "Test Product", category: categoryId, status: "active" }
+      body: { name: "Test Product", category: categoryId, status: "active", images: [{ url: "/uploads/test-type.jpg", alt: "" }] }
     });
     assert.equal(r.status, 201);
     productId = r.data.data.product._id;
-  });
-
-  await t.test("rejects a duplicate SKU", async () => {
-    const r = await req("/api/products", {
-      method: "POST",
-      body: { sku: "TEST-SKU-1", name: "Another Product", category: categoryId }
-    });
-    assert.equal(r.status, 409);
+    assert.equal(r.data.data.product.images[0].url, "/uploads/test-type.jpg");
   });
 
   await t.test("public (logged-out) product list only returns active products", async () => {
-    const draft = await req("/api/products", { method: "POST", body: { sku: "TEST-SKU-2", name: "Draft Product", category: categoryId, status: "draft" } });
+    const draft = await req("/api/products", { method: "POST", body: { name: "Test Draft Product", category: categoryId, status: "draft" } });
     assert.equal(draft.status, 201);
 
     const savedCookie = cookie;
@@ -114,9 +122,109 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     const r = await req(`/api/products?limit=50`);
     cookie = savedCookie;
 
-    const skus = r.data.data.items.map((p) => p.sku);
-    assert.ok(skus.includes("TEST-SKU-1"), "active product should be public");
-    assert.ok(!skus.includes("TEST-SKU-2"), "draft product must not be public");
+    const names = r.data.data.items.map((p) => p.name);
+    assert.ok(names.includes("Test Product"), "active product should be public");
+    assert.ok(!names.includes("Test Draft Product"), "draft product must not be public");
+  });
+
+  let variantId;
+  await t.test("creates a variant under the product", async () => {
+    const r = await req("/api/variants", {
+      method: "POST",
+      body: { product: productId, name: "Test Variant", sku: "TEST-SKU-1", specs: [{ key: "Composition", value: "100% Polyester" }] }
+    });
+    assert.equal(r.status, 201);
+    variantId = r.data.data.variant._id;
+    assert.ok(variantId);
+  });
+
+  await t.test("rejects a duplicate variant SKU", async () => {
+    const r = await req("/api/variants", {
+      method: "POST",
+      body: { product: productId, name: "Another Variant", sku: "TEST-SKU-1" }
+    });
+    assert.equal(r.status, 409);
+  });
+
+  await t.test("updates a variant's image, and a fresh GET reflects it (persistence, not just the write response)", async () => {
+    const update = await req(`/api/variants/${variantId}`, {
+      method: "PUT",
+      body: { product: productId, name: "Test Variant", sku: "TEST-SKU-1", images: [{ url: "/uploads/variant-a.jpg", alt: "" }] }
+    });
+    assert.equal(update.status, 200);
+    assert.equal(update.data.data.variant.images[0].url, "/uploads/variant-a.jpg");
+
+    const fetched = await req(`/api/variants/${variantId}`);
+    assert.equal(fetched.status, 200);
+    assert.equal(fetched.data.data.variant.images[0].url, "/uploads/variant-a.jpg");
+  });
+
+  await t.test("replacing a variant's image updates it (not appends/duplicates)", async () => {
+    const r = await req(`/api/variants/${variantId}`, {
+      method: "PUT",
+      body: { product: productId, name: "Test Variant", sku: "TEST-SKU-1", images: [{ url: "/uploads/variant-b.jpg", alt: "" }] }
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.data.variant.images.length, 1);
+    assert.equal(r.data.data.variant.images[0].url, "/uploads/variant-b.jpg");
+  });
+
+  await t.test("deleting a variant's image clears it (falls back to the Type/Category image client-side)", async () => {
+    const r = await req(`/api/variants/${variantId}`, {
+      method: "PUT",
+      body: { product: productId, name: "Test Variant", sku: "TEST-SKU-1", images: [] }
+    });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.data.data.variant.images, []);
+  });
+
+  await t.test("two variants of the same product keep their own distinct images (no cross-contamination)", async () => {
+    const other = await req("/api/variants", {
+      method: "POST",
+      body: { product: productId, name: "Sibling Variant", sku: "TEST-SKU-3", images: [{ url: "/uploads/sibling.jpg", alt: "" }] }
+    });
+    assert.equal(other.status, 201);
+    const otherId = other.data.data.variant._id;
+
+    await req(`/api/variants/${variantId}`, {
+      method: "PUT",
+      body: { product: productId, name: "Test Variant", sku: "TEST-SKU-1", images: [{ url: "/uploads/first.jpg", alt: "" }] }
+    });
+
+    const [a, b] = await Promise.all([req(`/api/variants/${variantId}`), req(`/api/variants/${otherId}`)]);
+    assert.equal(a.data.data.variant.images[0].url, "/uploads/first.jpg");
+    assert.equal(b.data.data.variant.images[0].url, "/uploads/sibling.jpg");
+  });
+
+  await t.test("updates a product (Type)'s image", async () => {
+    const update = await req(`/api/products/${productId}`, { method: "PUT", body: { images: [{ url: "/uploads/type-updated.jpg", alt: "" }] } });
+    assert.equal(update.status, 200);
+
+    const fetched = await req(`/api/products/${productId}`);
+    assert.equal(fetched.data.data.product.images[0].url, "/uploads/type-updated.jpg");
+  });
+
+  await t.test("deleting a product (Type)'s image clears it", async () => {
+    const r = await req(`/api/products/${productId}`, { method: "PUT", body: { images: [] } });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.data.data.product.images, []);
+  });
+
+  await t.test("public (logged-out) variant list only returns active variants", async () => {
+    const inactive = await req("/api/variants", {
+      method: "POST",
+      body: { product: productId, name: "Inactive Variant", sku: "TEST-SKU-2", isActive: false }
+    });
+    assert.equal(inactive.status, 201);
+
+    const savedCookie = cookie;
+    cookie = "";
+    const r = await req(`/api/variants?product=${productId}`);
+    cookie = savedCookie;
+
+    const names = r.data.data.items.map((v) => v.name);
+    assert.ok(names.includes("Test Variant"), "active variant should be public");
+    assert.ok(!names.includes("Inactive Variant"), "inactive variant must not be public");
   });
 
   await t.test("prevents deleting a category still in use", async () => {
@@ -149,6 +257,79 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     assert.equal(update.data.data.enquiry.status, "contacted");
   });
 
+  let personId;
+  await t.test("creates a person", async () => {
+    const r = await req("/api/people", { method: "POST", body: { name: "Test Person", designation: "Tester" } });
+    assert.equal(r.status, 201);
+    personId = r.data.data.person._id;
+    assert.ok(personId);
+  });
+
+  await t.test("public (logged-out) people list only returns active people", async () => {
+    const inactive = await req("/api/people", { method: "POST", body: { name: "Test Person Inactive", designation: "Tester", isActive: false } });
+    assert.equal(inactive.status, 201);
+
+    const savedCookie = cookie;
+    cookie = "";
+    const r = await req(`/api/people?limit=50`);
+    cookie = savedCookie;
+
+    const names = r.data.data.items.map((p) => p.name);
+    assert.ok(names.includes("Test Person"), "active person should be public");
+    assert.ok(!names.includes("Test Person Inactive"), "inactive person must not be public");
+  });
+
+  await t.test("updates a person", async () => {
+    const r = await req(`/api/people/${personId}`, { method: "PUT", body: { designation: "Senior Tester" } });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.data.person.designation, "Senior Tester");
+  });
+
+  await t.test("deletes a person", async () => {
+    const r = await req(`/api/people/${personId}`, { method: "DELETE" });
+    assert.equal(r.status, 200);
+    const list = await req("/api/people?limit=50");
+    assert.ok(!list.data.data.items.some((p) => p._id === personId));
+  });
+
+  let videoId;
+  await t.test("creates a video (metadata only — no real Cloudinary upload in tests)", async () => {
+    const r = await req("/api/videos", {
+      method: "POST",
+      body: { title: "Test Video", url: "https://res.cloudinary.com/demo/video/upload/test.mp4", publicId: "test-video-public-id" }
+    });
+    assert.equal(r.status, 201);
+    videoId = r.data.data.video._id;
+    assert.equal(r.data.data.video.status, "draft");
+  });
+
+  await t.test("public (logged-out) video list only returns published videos", async () => {
+    const savedCookie = cookie;
+    cookie = "";
+    const r = await req("/api/videos");
+    cookie = savedCookie;
+    assert.ok(!r.data.data.items.some((v) => v._id === videoId), "draft video must not be public");
+  });
+
+  await t.test("publishing a video makes it public", async () => {
+    const update = await req(`/api/videos/${videoId}`, { method: "PUT", body: { status: "published" } });
+    assert.equal(update.status, 200);
+    assert.equal(update.data.data.video.status, "published");
+
+    const savedCookie = cookie;
+    cookie = "";
+    const r = await req("/api/videos");
+    cookie = savedCookie;
+    assert.ok(r.data.data.items.some((v) => v._id === videoId), "published video should be public");
+  });
+
+  await t.test("deletes a video (Cloudinary deletion best-effort without credentials)", async () => {
+    const r = await req(`/api/videos/${videoId}`, { method: "DELETE" });
+    assert.equal(r.status, 200);
+    const list = await req("/api/videos?limit=50");
+    assert.ok(!list.data.data.items.some((v) => v._id === videoId));
+  });
+
   await t.test("logout clears the session", async () => {
     await req("/api/admin/logout", { method: "POST" });
     cookie = "";
@@ -160,8 +341,11 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
   await Promise.all([
     Admin.deleteMany({ email: /^test-admin@/ }),
     Category.deleteMany({ slug: /^test-/ }),
-    Product.deleteMany({ sku: /^TEST-/ }),
-    Enquiry.deleteMany({ email: /^test-enquiry@/ })
+    Product.deleteMany({ slug: /^test-/ }),
+    Variant.deleteMany({ sku: /^TEST-/ }),
+    Video.deleteMany({ title: /^Test Video/ }),
+    Enquiry.deleteMany({ email: /^test-enquiry@/ }),
+    Person.deleteMany({ name: /^Test Person/ })
   ]);
   server.close();
 });

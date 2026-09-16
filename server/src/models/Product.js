@@ -1,7 +1,17 @@
 import mongoose from "mongoose";
 
 const imageSchema = new mongoose.Schema(
-  { url: { type: String, required: true, trim: true, maxlength: 2000 }, alt: { type: String, trim: true, maxlength: 200, default: "" } },
+  {
+    url: { type: String, required: true, trim: true, maxlength: 2000 },
+    alt: { type: String, trim: true, maxlength: 200, default: "" },
+    filename: { type: String, trim: true, maxlength: 255, default: "" },
+    // Set when this image was attached via the Media Library picker, so the
+    // same uploaded file can be reused on other Products/Variants and
+    // deleting it from the library can find every place it is still in use.
+    // Optional/nullable so directly-uploaded and legacy images (which have
+    // no Media record) keep working unchanged.
+    media: { type: mongoose.Schema.Types.ObjectId, ref: "Media", default: null }
+  },
   { _id: false }
 );
 

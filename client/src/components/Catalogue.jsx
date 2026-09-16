@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { LINES } from "../data/content";
 import { images } from "../assets/images";
-import { getApiBase } from "../apiBase";
+import { getApiBase, resolveUploadUrl } from "../apiBase";
 import { DEFAULT_IMAGE, resolveGallery } from "../utils/catalogueImage";
 import Corners from "./Corners";
 
 const API_URL = getApiBase();
 
 function resolveImage(url) {
-  return images[url] || url;
+  return images[url] || resolveUploadUrl(url);
 }
 
 // Renders one <img>, remounting (via the `key` the caller passes, keyed to
@@ -133,9 +133,13 @@ export default function Catalogue({ onOpenModal }) {
     return categories.find((c) => c._id === line?.categoryId) || null;
   }
 
-  const activeVariant = dynamic
-    ? activeLine?.variants?.find((v) => v.id === openVariant) || activeLine?.variants?.[0] || null
-    : null;
+  // Deliberately does NOT default to the first variant when none is
+  // explicitly selected (openVariant === null) — clicking the main
+  // category/Type must show that Type's own image, not silently fall
+  // through to a subcategory/Variant's image just because one exists.
+  // Only an explicit variant click should switch the preview to a
+  // variant's image.
+  const activeVariant = dynamic ? activeLine?.variants?.find((v) => v.id === openVariant) || null : null;
   const gallery = dynamic
     ? resolveGallery(activeVariant, activeLine, categoryFor(activeLine))
     : activeLine?.gallery?.length
@@ -159,8 +163,9 @@ export default function Catalogue({ onOpenModal }) {
     setGalleryIndex(0);
   }
 
-  function selectVariant(v) {
-    setOpenVariant((cur) => (cur === v.id ? null : v.id));
+  function selectVariant(lineIndex, v) {
+    setActive(lineIndex);
+    setOpenVariant(v.id);
     setGalleryIndex(0);
   }
 
@@ -204,7 +209,10 @@ export default function Catalogue({ onOpenModal }) {
                     type="button"
                     aria-expanded={isOpen}
                     className="ff-line-head"
-                    onClick={() => setOpen(isOpen ? -1 : i)}
+                    onClick={() => {
+                      selectType(i);
+                      setOpen(isOpen ? -1 : i);
+                    }}
                     onMouseEnter={() => selectType(i)}
                     onFocus={() => selectType(i)}
                   >
@@ -237,7 +245,9 @@ export default function Catalogue({ onOpenModal }) {
                                       type="button"
                                       className="ff-variant-head"
                                       aria-expanded={isVariantOpen}
-                                      onClick={() => selectVariant(v)}
+                                      onClick={() => selectVariant(i, v)}
+                                      onMouseEnter={() => selectVariant(i, v)}
+                                      onFocus={() => selectVariant(i, v)}
                                     >
                                       <span>{v.name}</span>
                                       <span className="ff-line-icon">
@@ -301,7 +311,7 @@ export default function Catalogue({ onOpenModal }) {
                 const slotImage = isActiveSlot
                   ? activeGalleryImage
                   : dynamic
-                    ? resolveGallery(line.variants?.[0], line, categoryFor(line))[0]
+                    ? resolveGallery(null, line, categoryFor(line))[0]
                     : line.image;
                 return (
                   <div key={line.id} className={`ff-preview-slot${isActiveSlot ? " is-active" : ""}`}>

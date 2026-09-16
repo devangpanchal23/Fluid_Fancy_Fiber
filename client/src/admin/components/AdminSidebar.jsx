@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 const NAV = [
   { to: "/admin/dashboard", label: "Dashboard", icon: "grid" },
   { to: "/admin/products", label: "Products", icon: "box" },
+  { to: "/admin/media", label: "Media library", icon: "image" },
   { to: "/admin/categories", label: "Categories", icon: "tag" },
   { to: "/admin/videos", label: "Videos", icon: "video" },
   { to: "/admin/people", label: "People", icon: "people" },
@@ -28,6 +29,9 @@ const ICONS = {
   ),
   video: (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="6" width="13" height="12" rx="1.2" /><path d="m16 10 5-3v10l-5-3" /></svg>
+  ),
+  image: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="4" width="18" height="16" rx="1.2" /><circle cx="8.5" cy="9.5" r="1.6" /><path d="m4 17 5-5 4 4 3-3 4 4" /></svg>
   ),
   gear: (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="3.2" /><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.9-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4L4.6 10.5a7.6 7.6 0 0 0 0 3L2.7 15l2 3.4 2.3-.9c.77.66 1.65 1.17 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4Z" /></svg>

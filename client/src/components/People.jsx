@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { PEOPLE } from "../data/content";
 import { images as bundledImages } from "../assets/images";
-import { getApiBase } from "../apiBase";
+import { getApiBase, resolveUploadUrl } from "../apiBase";
 
 const API_URL = getApiBase();
 
 function resolveImage(url) {
-  return bundledImages[url] || url;
+  return bundledImages[url] || resolveUploadUrl(url);
 }
 
 function initialsOf(name) {

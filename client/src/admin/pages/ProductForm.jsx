@@ -183,7 +183,12 @@ export default function ProductForm() {
 
       <fieldset className="ff-admin-fieldset">
         <legend>Images</legend>
-        <ProductImageUploader images={form.images} onChange={(images) => set("images", images)} onUploadingChange={setImagesUploading} />
+        <ProductImageUploader
+          images={form.images}
+          onChange={(images) => set("images", images)}
+          onUploadingChange={setImagesUploading}
+          uploadPath={isEdit ? `/products/${id}/images` : undefined}
+        />
         <p className="ff-admin-hint">
           Used as the catalogue preview when a selected Variant has no image of its own. The first image is the primary/featured one.
         </p>

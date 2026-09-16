@@ -7,6 +7,7 @@ import AdminLogin from "./pages/AdminLogin";
 import Dashboard from "./pages/Dashboard";
 import ProductList from "./pages/ProductList";
 import ProductForm from "./pages/ProductForm";
+import MediaLibrary from "./pages/MediaLibrary";
 import CategoryManager from "./pages/CategoryManager";
 import VariantList from "./pages/VariantList";
 import VariantForm from "./pages/VariantForm";
@@ -38,6 +39,7 @@ export default function AdminApp() {
             <Route path="products/:productId/variants" element={<VariantList />} />
             <Route path="products/:productId/variants/new" element={<VariantForm />} />
             <Route path="products/:productId/variants/:id/edit" element={<VariantForm />} />
+            <Route path="media" element={<MediaLibrary />} />
             <Route path="categories" element={<CategoryManager />} />
             <Route path="videos" element={<VideoList />} />
             <Route path="videos/new" element={<VideoForm />} />

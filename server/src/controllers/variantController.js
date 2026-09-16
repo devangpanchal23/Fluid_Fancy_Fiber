@@ -1,5 +1,6 @@
 import Variant from "../models/Variant.js";
 import Product from "../models/Product.js";
+import { saveImage } from "../utils/imageStorage.js";
 
 async function assertProductExists(productId) {
   const product = await Product.findById(productId).catch(() => null);
@@ -126,6 +127,26 @@ export async function updateVariant(req, res, next) {
 
     await variant.save();
     res.json({ success: true, data: { variant } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Persist a selected image directly on its exact Variant.  Keeping this
+// relationship server-side prevents one sibling's image from being reused by
+// another and gives the client a saved document to render immediately.
+export async function addVariantImage(req, res, next) {
+  try {
+    const variant = await Variant.findById(req.params.id);
+    if (!variant) return res.status(404).json({ success: false, message: "Variant not found." });
+    if (!req.file) return res.status(400).json({ success: false, message: "No image file was provided." });
+
+    const { url, filename } = await saveImage(req.file.buffer, req.file.originalname, req.file.mimetype);
+    const image = { url, filename, alt: "" };
+    variant.images.push(image);
+    await variant.save();
+
+    res.status(201).json({ success: true, data: { variant, image } });
   } catch (err) {
     next(err);
   }

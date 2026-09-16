@@ -6,7 +6,13 @@ const specRowSchema = new mongoose.Schema(
 );
 
 const imageSchema = new mongoose.Schema(
-  { url: { type: String, required: true, trim: true, maxlength: 2000 }, alt: { type: String, trim: true, maxlength: 200, default: "" } },
+  {
+    url: { type: String, required: true, trim: true, maxlength: 2000 },
+    alt: { type: String, trim: true, maxlength: 200, default: "" },
+    filename: { type: String, trim: true, maxlength: 255, default: "" },
+    // See Product.js's imageSchema for why this is optional/nullable.
+    media: { type: mongoose.Schema.Types.ObjectId, ref: "Media", default: null }
+  },
   { _id: false }
 );
 

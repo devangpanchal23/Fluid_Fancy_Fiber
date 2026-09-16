@@ -69,6 +69,31 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     return { status: res.status, data };
   }
 
+  // Do not set Content-Type here: fetch supplies the multipart boundary for
+  // FormData. This exercises the same browser request shape used by the
+  // admin image picker.
+  async function upload(path, filename = "test-upload.png") {
+    const form = new FormData();
+    form.append("image", new Blob(["test image bytes"], { type: "image/png" }), filename);
+    const res = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: cookie ? { Cookie: cookie } : undefined,
+      body: form
+    });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  }
+
+  async function uploadUnsupportedFile(path) {
+    const form = new FormData();
+    form.append("image", new Blob(["not an image"], { type: "text/plain" }), "not-an-image.txt");
+    const res = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: cookie ? { Cookie: cookie } : undefined,
+      body: form
+    });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  }
+
   await t.test("rejects unauthenticated access to protected routes", async () => {
     const r1 = await req("/api/admin/me");
     assert.equal(r1.status, 401);
@@ -113,6 +138,23 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     assert.equal(r.data.data.product.images[0].url, "/uploads/test-type.jpg");
   });
 
+  await t.test("uploads directly to an existing product and persists the returned image", async () => {
+    const r = await upload(`/api/products/${productId}/images`, "product-direct.png");
+    assert.equal(r.status, 201);
+    assert.equal(r.data.success, true);
+    assert.match(r.data.data.image.url, /^\/uploads\/.+\.png$/);
+
+    const fetched = await req(`/api/products/${productId}`);
+    assert.ok(fetched.data.data.product.images.some((image) => image.url === r.data.data.image.url));
+    await req(`/api/uploads/${r.data.data.image.filename}`, { method: "DELETE" });
+  });
+
+  await t.test("rejects an unsupported image upload with a visible API error", async () => {
+    const r = await uploadUnsupportedFile(`/api/products/${productId}/images`);
+    assert.equal(r.status, 400);
+    assert.match(r.data.message, /Unsupported file type/i);
+  });
+
   await t.test("public (logged-out) product list only returns active products", async () => {
     const draft = await req("/api/products", { method: "POST", body: { name: "Test Draft Product", category: categoryId, status: "draft" } });
     assert.equal(draft.status, 201);
@@ -136,6 +178,18 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     assert.equal(r.status, 201);
     variantId = r.data.data.variant._id;
     assert.ok(variantId);
+  });
+
+  await t.test("uploads directly to an existing variant and persists only on that variant", async () => {
+    const r = await upload(`/api/variants/${variantId}/images`, "variant-direct.png");
+    assert.equal(r.status, 201);
+    assert.equal(r.data.success, true);
+    assert.match(r.data.data.image.url, /^\/uploads\/.+\.png$/);
+
+    const fetched = await req(`/api/variants/${variantId}`);
+    assert.equal(fetched.status, 200);
+    assert.ok(fetched.data.data.variant.images.some((image) => image.url === r.data.data.image.url));
+    await req(`/api/uploads/${r.data.data.image.filename}`, { method: "DELETE" });
   });
 
   await t.test("rejects a duplicate variant SKU", async () => {

@@ -11,6 +11,7 @@
     "seed:admin": "node src/scripts/seedAdmin.js",
     "migrate:products": "node src/scripts/migrateProducts.js",
     "migrate:variants": "node src/scripts/migrateProductsToVariants.js",
+    "migrate:media": "node src/scripts/migrateImagesToMedia.js",
     "test": "node --test src/__tests__/*.test.js"
   },
   "dependencies": {

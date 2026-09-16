@@ -2,6 +2,7 @@ import Product from "../models/Product.js";
 import Category from "../models/Category.js";
 import Variant from "../models/Variant.js";
 import { slugify } from "../utils/slugify.js";
+import { saveImage } from "../utils/imageStorage.js";
 
 const STATUSES = ["draft", "active", "archived"];
 
@@ -139,6 +140,28 @@ export async function updateProduct(req, res, next) {
 
     await product.save();
     res.json({ success: true, data: { product } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Persists an image as soon as it is selected in an existing Product form.
+// This intentionally differs from the generic /uploads endpoint: its
+// response contains the freshly-saved Product, so the client can update its
+// form without a second request and a refresh proves the image is not merely
+// a local preview.
+export async function addProductImage(req, res, next) {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: "Product not found." });
+    if (!req.file) return res.status(400).json({ success: false, message: "No image file was provided." });
+
+    const { url, filename } = await saveImage(req.file.buffer, req.file.originalname, req.file.mimetype);
+    const image = { url, filename, alt: "" };
+    product.images.push(image);
+    await product.save();
+
+    res.status(201).json({ success: true, data: { product, image } });
   } catch (err) {
     next(err);
   }

@@ -2,12 +2,15 @@ import { useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { images as bundledImages } from "../../assets/images";
+import { resolveUploadUrl } from "../../apiBase";
+import { mergeSelectedMedia } from "../../utils/mediaSelection";
+import MediaPicker from "./MediaPicker";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 function resolveSrc(url) {
-  return bundledImages[url] || url;
+  return bundledImages[url] || resolveUploadUrl(url);
 }
 
 function validateFile(file) {
@@ -25,11 +28,12 @@ function validateFile(file) {
 // clicks Save immediately (before the async upload finishes and calls
 // onChange) submits the form without the image, since the upload happens
 // independently of form submission.
-export default function ProductImageUploader({ images, onChange, onUploadingChange }) {
+export default function ProductImageUploader({ images, onChange, onUploadingChange, uploadPath }) {
   const inputRef = useRef(null);
   const toast = useToast();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   function setUploadingState(value) {
     setUploading(value);
@@ -54,8 +58,17 @@ export default function ProductImageUploader({ images, onChange, onUploadingChan
         try {
           const formData = new FormData();
           formData.append("image", file);
-          const { url, filename } = await api.upload("/uploads", formData);
-          uploaded.push({ url, filename, alt: "" });
+          const result = await api.upload(uploadPath || "/uploads", formData);
+          // Existing products/variants use an owner-specific endpoint that
+          // saves immediately and returns its complete image list. New items
+          // have no id yet, so they use the generic endpoint and are persisted
+          // when the form itself is created.
+          const owner = result.product || result.variant;
+          if (owner?.images) {
+            onChange(owner.images);
+          } else {
+            uploaded.push({ url: result.url, filename: result.filename, alt: "" });
+          }
         } catch (err) {
           const message = err instanceof ApiError ? err.message : "Upload failed. Please try again.";
           setError(message);
@@ -77,9 +90,14 @@ export default function ProductImageUploader({ images, onChange, onUploadingChan
   }
 
   function onInputChange(e) {
-    const files = e.target.files;
+    // `e.target.files` is a *live* FileList tied to the input — clearing
+    // `.value` right after (so the same file can be re-selected later)
+    // empties that same FileList in place, not just the input's own copy.
+    // Snapshot into a plain array first, or `files.length` reads back as 0
+    // and the upload silently never starts.
+    const files = Array.from(e.target.files || []);
     e.target.value = "";
-    if (files && files.length) handleFiles(files);
+    if (files.length) handleFiles(files);
   }
 
   function removeAt(i) {
@@ -102,6 +120,10 @@ export default function ProductImageUploader({ images, onChange, onUploadingChan
     const [item] = next.splice(i, 1);
     next.unshift(item);
     onChange(next);
+  }
+
+  function onPickerConfirm(selectedMedia) {
+    onChange(mergeSelectedMedia(images, selectedMedia));
   }
 
   return (
@@ -135,15 +157,20 @@ export default function ProductImageUploader({ images, onChange, onUploadingChan
         </ul>
       )}
 
-      <button
-        type="button"
-        className="ff-btn ff-btn-ghost"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-      >
-        {uploading && <span className="ff-btn-spinner" />}
-        <span>{uploading ? "Uploading…" : "+ Upload images"}</span>
-      </button>
+      <div className="ff-admin-image-add-actions">
+        <button
+          type="button"
+          className="ff-btn ff-btn-ghost"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading && <span className="ff-btn-spinner" />}
+          <span>{uploading ? "Uploading…" : "+ Upload images"}</span>
+        </button>
+        <button type="button" className="ff-btn ff-btn-ghost" onClick={() => setPickerOpen(true)}>
+          Choose from library
+        </button>
+      </div>
       <input
         ref={inputRef}
         type="file"
@@ -154,6 +181,8 @@ export default function ProductImageUploader({ images, onChange, onUploadingChan
       />
       {error && <p className="ff-field-error">{error}</p>}
       <p className="ff-admin-hint">The first image is used as the primary photo. Use "Make primary" to reorder.</p>
+
+      <MediaPicker open={pickerOpen} multiple onClose={() => setPickerOpen(false)} onConfirm={onPickerConfirm} />
     </div>
   );
 }

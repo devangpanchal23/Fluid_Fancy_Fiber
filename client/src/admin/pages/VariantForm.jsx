@@ -171,7 +171,12 @@ export default function VariantForm() {
 
       <fieldset className="ff-admin-fieldset">
         <legend>Images</legend>
-        <ProductImageUploader images={form.images} onChange={(images) => set("images", images)} onUploadingChange={setImagesUploading} />
+        <ProductImageUploader
+          images={form.images}
+          onChange={(images) => set("images", images)}
+          onUploadingChange={setImagesUploading}
+          uploadPath={isEdit ? `/variants/${id}/images` : undefined}
+        />
       </fieldset>
 
       <div className="ff-admin-form-actions">

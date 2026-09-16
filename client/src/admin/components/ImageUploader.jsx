@@ -2,12 +2,13 @@ import { useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { images as bundledImages } from "../../assets/images";
+import { resolveUploadUrl } from "../../apiBase";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 function resolveSrc(url) {
-  return bundledImages[url] || url;
+  return bundledImages[url] || resolveUploadUrl(url);
 }
 
 function validateFile(file) {

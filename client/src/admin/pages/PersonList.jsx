@@ -4,9 +4,10 @@ import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { images as bundledImages } from "../../assets/images";
+import { resolveUploadUrl } from "../../apiBase";
 
 function resolveSrc(url) {
-  return bundledImages[url] || url;
+  return bundledImages[url] || resolveUploadUrl(url);
 }
 
 export default function PersonList() {

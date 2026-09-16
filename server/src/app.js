@@ -7,9 +7,11 @@ import productRoutes from "./routes/productRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import personRoutes from "./routes/personRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import mediaRoutes from "./routes/mediaRoutes.js";
 import variantRoutes from "./routes/variantRoutes.js";
 import videoRoutes from "./routes/videoRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 import { connectDB, isDbConnected } from "./config/db.js";
 import { UPLOAD_DIR } from "./utils/imageStorage.js";
 
@@ -24,6 +26,7 @@ app.set("trust proxy", 1);
 // credentials: true is required so the browser sends/receives the admin
 // session cookie across origins in local dev (client :5173, server :5000).
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+app.use(requestLogger);
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 
@@ -66,6 +69,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/people", personRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/media", mediaRoutes);
 app.use("/api/variants", variantRoutes);
 app.use("/api/videos", videoRoutes);
 

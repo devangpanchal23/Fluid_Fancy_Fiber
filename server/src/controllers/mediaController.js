@@ -37,14 +37,8 @@ export async function listMedia(req, res, next) {
 export async function uploadMedia(req, res, next) {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No image file was provided." });
-    const { url, filename } = await saveImage(req.file.buffer, req.file.originalname, req.file.mimetype);
-    const media = await Media.create({
-      url,
-      filename,
-      originalName: req.file.originalname || "",
-      alt: (req.body?.alt || "").trim(),
-      mimeType: req.file.mimetype,
-      size: req.file.size
+    const { media } = await saveImage(req.file.buffer, req.file.originalname, req.file.mimetype, {
+      alt: req.body?.alt
     });
     res.status(201).json({ success: true, data: { media } });
   } catch (err) {
@@ -129,8 +123,9 @@ export async function deleteMedia(req, res, next) {
     }
 
     if (inUse) await removeFromAllUses(media);
+    // deleteImage removes the Media document itself (the bytes live on it) —
+    // no separate media.deleteOne() needed.
     await deleteImage(media.filename);
-    await media.deleteOne();
 
     res.json({ success: true, data: null });
   } catch (err) {

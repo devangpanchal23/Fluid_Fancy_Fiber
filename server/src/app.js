@@ -13,7 +13,7 @@ import videoRoutes from "./routes/videoRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { connectDB, isDbConnected } from "./config/db.js";
-import { UPLOAD_DIR } from "./utils/imageStorage.js";
+import { serveImage } from "./controllers/uploadController.js";
 
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 
@@ -30,9 +30,12 @@ app.use(requestLogger);
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 
-// Serves locally-uploaded images (see server/src/utils/imageStorage.js). Only
-// durable in local/traditional hosting — see that file's header comment.
-app.use("/uploads", express.static(UPLOAD_DIR));
+// Serves uploaded images out of MongoDB (see server/src/utils/imageStorage.js).
+// Public — no requireAdmin — since these are the actual product/category/
+// person photos rendered on the live site. On Vercel this path only reaches
+// this Express app because vercel.json explicitly rewrites /uploads/(.*) to
+// the /api function; without that rewrite it 404s against the static site.
+app.get("/uploads/:filename", serveImage);
 
 app.get("/api/health", (req, res) => {
   const dbConnected = isDbConnected();

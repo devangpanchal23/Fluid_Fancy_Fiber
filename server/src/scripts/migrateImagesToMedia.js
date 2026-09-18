@@ -14,6 +14,7 @@
 // Run with: npm run migrate:media
 import "dotenv/config";
 import path from "path";
+import { fileURLToPath } from "url";
 import { promises as fs } from "fs";
 import mongoose from "mongoose";
 import { connectDB } from "../config/db.js";
@@ -22,7 +23,13 @@ import Product from "../models/Product.js";
 import Variant from "../models/Variant.js";
 import Category from "../models/Category.js";
 import Person from "../models/Person.js";
-import { UPLOAD_DIR } from "../utils/imageStorage.js";
+
+// Images now live in MongoDB (see imageStorage.js), but this script's job is
+// reading files that still only exist on local disk from an old run — so it
+// keeps its own reference to that legacy directory rather than importing it
+// from imageStorage.js (which no longer touches disk at all).
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const UPLOAD_DIR = path.join(__dirname, "..", "..", "uploads");
 
 const MIME_BY_EXT = {
   ".jpg": "image/jpeg",
@@ -39,18 +46,32 @@ function isLocalUpload(url) {
 async function mediaForUrl(url, cache) {
   if (cache.has(url)) return cache.get(url);
 
-  let media = await Media.findOne({ url });
-  if (!media) {
-    const filename = path.basename(url);
-    const filePath = path.join(UPLOAD_DIR, filename);
-    let stat;
-    try {
-      stat = await fs.stat(filePath);
-    } catch {
-      console.warn(`[migrate:media] Skipping ${url} — file not found on disk.`);
-      cache.set(url, null);
-      return null;
-    }
+  let media = await Media.findOne({ url }).select("+data");
+  const filename = path.basename(url);
+  const filePath = path.join(UPLOAD_DIR, filename);
+
+  if (media && media.data) {
+    cache.set(url, media);
+    return media;
+  }
+
+  let fileBuffer;
+  let stat;
+  try {
+    fileBuffer = await fs.readFile(filePath);
+    stat = await fs.stat(filePath);
+  } catch {
+    console.warn(`[migrate:media] Skipping ${url} — file not found on local disk (already migrated to MongoDB, or never existed here).`);
+    cache.set(url, media || null);
+    return media || null;
+  }
+
+  if (media) {
+    // Existing record from before images moved into MongoDB — backfill the
+    // bytes it's missing rather than creating a duplicate.
+    media.data = fileBuffer;
+    await media.save();
+  } else {
     const ext = path.extname(filename).toLowerCase();
     media = await Media.create({
       url,
@@ -58,7 +79,8 @@ async function mediaForUrl(url, cache) {
       originalName: "",
       alt: "",
       mimeType: MIME_BY_EXT[ext] || "application/octet-stream",
-      size: stat.size
+      size: stat.size,
+      data: fileBuffer
     });
   }
   cache.set(url, media);

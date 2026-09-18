@@ -334,7 +334,7 @@ textarea::placeholder {
   gap: 26px;
 }
 .ff-preloader-logo {
-  width: clamp(200px, 26vw, 320px);
+  width: clamp(240px, 28vw, 360px);
   height: auto;
   filter: invert(1) brightness(1.6);
   mix-blend-mode: screen;
@@ -1856,7 +1856,7 @@ textarea::placeholder {
   margin: 0 auto;
 }
 .ff-footer-brand img {
-  width: clamp(170px, 19vw, 240px);
+  width: clamp(240px, 28vw, 360px);
   height: auto;
   mix-blend-mode: multiply;
 }

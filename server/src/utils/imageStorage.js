@@ -1,18 +1,15 @@
-// Image storage abstraction. Today this writes to a local `server/uploads/`
-// directory, which is fine for local dev and traditional (non-serverless)
-// hosting, but Vercel's serverless functions have no persistent or shared
-// filesystem — files written here in production will not reliably survive
-// across invocations/deployments. To go to production, swap the body of
-// saveImage/deleteImage for a real provider (Cloudinary, Vercel Blob, S3,
-// Supabase Storage, …); every caller in this codebase only depends on the
-// {url, filename} shape returned below, so no other file needs to change.
-import { promises as fs } from "fs";
+// Image storage abstraction. Images are stored as binary data directly on a
+// Media document in MongoDB Atlas (see server/src/models/Media.js) and
+// served back by server/src/controllers/uploadController.js's serveImage
+// handler, mounted at GET /uploads/:filename — this avoids Vercel's
+// serverless functions having no persistent/shared filesystem, which local
+// disk storage silently failed on (a file written during one request was
+// gone by the next, on a different container or after a redeploy). Every
+// caller in this codebase only depends on the {url, filename} shape returned
+// below, so no other file needs to change if the backend changes again.
 import path from "path";
 import crypto from "crypto";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOAD_DIR = path.join(__dirname, "..", "..", "uploads");
+import Media from "../models/Media.js";
 
 const EXT_BY_MIME = {
   "image/jpeg": ".jpg",
@@ -21,25 +18,36 @@ const EXT_BY_MIME = {
   "image/gif": ".gif"
 };
 
-async function ensureUploadDir() {
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
+function isSafeFilename(filename) {
+  return Boolean(filename) && !filename.includes("/") && !filename.includes("\\") && !filename.includes("..");
 }
 
-export async function saveImage(buffer, originalName, mimetype) {
-  await ensureUploadDir();
+export async function saveImage(buffer, originalName, mimetype, { alt = "" } = {}) {
   const ext = EXT_BY_MIME[mimetype] || path.extname(originalName || "").slice(0, 10) || ".bin";
   const filename = `${crypto.randomBytes(16).toString("hex")}${ext}`;
-  await fs.writeFile(path.join(UPLOAD_DIR, filename), buffer);
-  return { url: `/uploads/${filename}`, filename };
+  const url = `/uploads/${filename}`;
+
+  const media = await Media.create({
+    url,
+    filename,
+    originalName: originalName || "",
+    alt: String(alt || "").trim(),
+    mimeType: mimetype,
+    size: buffer.length,
+    data: buffer
+  });
+
+  return { url, filename, media };
 }
 
 export async function deleteImage(filename) {
-  if (!filename || filename.includes("/") || filename.includes("\\") || filename.includes("..")) return;
-  try {
-    await fs.unlink(path.join(UPLOAD_DIR, filename));
-  } catch (err) {
-    if (err.code !== "ENOENT") throw err;
-  }
+  if (!isSafeFilename(filename)) return;
+  await Media.deleteOne({ filename });
 }
 
-export { UPLOAD_DIR };
+// Used by GET /uploads/:filename to stream the bytes back out. Explicitly
+// re-selects `data` since the schema excludes it by default.
+export async function getImageData(filename) {
+  if (!isSafeFilename(filename)) return null;
+  return Media.findOne({ filename }).select("+data mimeType");
+}

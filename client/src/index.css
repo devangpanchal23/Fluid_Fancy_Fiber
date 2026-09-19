@@ -773,26 +773,66 @@ textarea::placeholder {
 
 /* ---------- quote banner ---------- */
 
+/* Space above so the box never touches the marquee/stats row before it. */
+.ff-quote-section {
+  padding-top: clamp(28px, 5vh, 56px);
+}
 .ff-quote-banner {
   position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(20px, 3vw, 40px);
-  padding: clamp(30px, 4.5vw, 54px) clamp(26px, 4vw, 56px);
+  gap: clamp(24px, 3vw, 48px);
+  padding: clamp(28px, 4.5vw, 56px) clamp(22px, 4vw, 56px);
   background: var(--ff-bg-alt);
   border: 1px solid var(--ff-line-strong);
 }
 .ff-quote-banner-copy {
+  flex: 1 1 340px;
+  min-width: 0;
   max-width: 60ch;
 }
+.ff-quote-banner .ff-heading {
+  font-size: clamp(26px, 3vw, 44px);
+  /* Balances the lines so a lone word ("DRIFT?") never dangles on its own row. */
+  text-wrap: balance;
+}
+.ff-quote-banner .ff-lede {
+  margin-top: clamp(14px, 1.6vw, 20px);
+  max-width: 46ch;
+  font-size: clamp(14px, 1.1vw, 16px);
+  line-height: 1.7;
+  text-wrap: pretty;
+}
 .ff-quote-banner-actions {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   min-width: 0;
   max-width: 100%;
+}
+.ff-quote-banner-actions .ff-btn {
+  justify-content: center;
+  text-align: center;
+}
+/* Below the point where copy and buttons no longer share a row, stack them
+   and let the buttons span the box so they are easy to tap. */
+@media (max-width: 720px) {
+  .ff-quote-banner {
+    align-items: stretch;
+  }
+  .ff-quote-banner-copy {
+    flex-basis: 100%;
+  }
+  .ff-quote-banner-actions {
+    flex: 1 1 100%;
+    flex-direction: column;
+  }
+  .ff-quote-banner-actions .ff-btn {
+    width: 100%;
+  }
 }
 
 /* ---------- catalogue accordion ---------- */

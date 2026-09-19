@@ -1,6 +1,6 @@
 export default function QuoteBanner({ onOpenModal }) {
   return (
-    <section id="quote-banner" className="ff-section ff-section--tight-top ff-section--tight-bottom">
+    <section id="quote-banner" className="ff-section ff-section--tight-bottom ff-quote-section">
       <div className="ff-container">
         <div className="ff-quote-banner" data-reveal="up">
           <i className="corner tl" />
@@ -9,10 +9,10 @@ export default function QuoteBanner({ onOpenModal }) {
           <i className="corner br" />
           <div className="ff-quote-banner-copy">
             <div className="ff-kicker">Next step</div>
-            <h2 className="ff-heading" style={{ fontSize: "clamp(26px, 3vw, 44px)" }}>
+            <h2 className="ff-heading">
               Ready to lock a count that doesn't drift?
             </h2>
-            <p className="ff-lede" style={{ maxWidth: "48ch" }}>
+            <p className="ff-lede">
               Send us the count, twist tolerance and volume — we'll confirm feasibility and quote against it within
               a working day.
             </p>

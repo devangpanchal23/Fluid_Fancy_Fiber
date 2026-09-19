@@ -191,6 +191,36 @@ test("People: admin changes are mirrored exactly on the public list", { skip: !d
     });
   }
 
+  await t.test("a photo picked from the Media Library works, stays linked, and protects the library item from deletion", async () => {
+    const form = new FormData();
+    form.append("image", new Blob(["library-bytes"], { type: "image/png" }), "test-people-library.png");
+    const uploaded = await (await fetch(`${base}/api/media`, { method: "POST", headers: { Cookie: cookie }, body: form })).json();
+    const media = uploaded.data.media;
+
+    // Exactly what ImageUploader sends after picking from the library.
+    const created = await req("/api/people", {
+      method: "POST",
+      body: { name: "TP Library", designation: "Picked", type: "co-partner", image: { url: media.url, filename: media.filename, alt: "", media: media._id } }
+    });
+    assert.equal(created.status, 201);
+    assert.equal(created.data.data.person.image.media, media._id, "person stays linked to its Media record");
+
+    const me = (await publicList()).find((p) => p.name === "TP Library");
+    await assertPhotoLoads(me, "library-bytes");
+
+    // Same library image reused by a second person.
+    const second = await req("/api/people", {
+      method: "POST",
+      body: { name: "TP Library Two", designation: "Reused", image: { url: media.url, filename: media.filename, alt: "", media: media._id } }
+    });
+    assert.equal(second.status, 201, "one library image can be used by several people");
+
+    const blocked = await req(`/api/media/${media._id}`, { method: "DELETE" });
+    assert.equal(blocked.status, 409, "in-use library image can't be silently deleted");
+    assert.match(blocked.data.message, /people entr/i);
+    assert.ok((await publicList()).find((p) => p.name === "TP Library"), "person keeps a working photo");
+  });
+
   await t.test("a legacy person with no photo stays visible+editable in admin, hidden publicly, and needs a photo to publish", async () => {
     // Simulates a record from before photos were mandatory, bypassing the API.
     const legacy = await Person.collection.insertOne({ name: "TP Legacy", designation: "Old", isActive: false, order: 99, links: [], createdAt: new Date(), updatedAt: new Date() });

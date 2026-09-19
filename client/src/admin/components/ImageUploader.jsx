@@ -3,6 +3,8 @@ import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { images as bundledImages } from "../../assets/images";
 import { resolveUploadUrl } from "../../apiBase";
+import { mediaToImage } from "../../utils/mediaSelection";
+import MediaPicker from "./MediaPicker";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -22,7 +24,8 @@ function validateFile(file) {
 }
 
 // Single-image uploader used for Person photos, Category images, and Video
-// thumbnails. `onUploadingChange` lets the parent form disable its Save
+// thumbnails. Besides uploading a new file, the admin can pick an existing
+// image from the Media Library. `onUploadingChange` lets the parent form disable its Save
 // button while a file is still uploading — without it, an admin who selects
 // a file and clicks Save immediately (before the async upload finishes and
 // calls onChange) submits the form without the image, since the upload
@@ -33,6 +36,7 @@ export default function ImageUploader({ image, onChange, label = "Image", onUplo
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   function setUploadingState(value) {
     setUploading(value);
@@ -83,6 +87,11 @@ export default function ImageUploader({ image, onChange, label = "Image", onUplo
     setError("");
   }
 
+  function onPickerConfirm(selected) {
+    setError("");
+    onChange({ ...mediaToImage(selected[0]), alt: selected[0].alt || image?.alt || "" });
+  }
+
   const displaySrc = preview || (image ? resolveSrc(image.url) : null);
 
   return (
@@ -107,6 +116,9 @@ export default function ImageUploader({ image, onChange, label = "Image", onUplo
           {uploading ? <span className="ff-admin-uploader-spinner" aria-label="Uploading" /> : `+ Upload ${label.toLowerCase()}`}
         </button>
       )}
+      <button type="button" className="ff-btn ff-btn-ghost" onClick={() => setPickerOpen(true)} disabled={uploading}>
+        {displaySrc ? "Replace from library" : "Choose from library"}
+      </button>
       <input
         ref={inputRef}
         type="file"
@@ -115,6 +127,8 @@ export default function ImageUploader({ image, onChange, label = "Image", onUplo
         hidden
       />
       {error && <p className="ff-field-error">{error}</p>}
+
+      <MediaPicker open={pickerOpen} multiple={false} onClose={() => setPickerOpen(false)} onConfirm={onPickerConfirm} />
     </div>
   );
 }

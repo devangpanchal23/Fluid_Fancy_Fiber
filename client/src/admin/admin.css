@@ -788,6 +788,9 @@
 .ff-admin-uploader {
   max-width: 220px;
 }
+.ff-admin-uploader > .ff-btn {
+  margin-top: 10px;
+}
 .ff-admin-uploader-dropzone {
   width: 160px;
   height: 120px;

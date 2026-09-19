@@ -1320,7 +1320,11 @@ textarea::placeholder {
 
 .ff-people-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  /* Cards have a capped width (scales with the screen up to 360px) instead of
+     stretching to fill the row, so one or two people never balloon into
+     huge photos on wide screens; the row stays centred. */
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), clamp(260px, 24vw, 360px)));
+  justify-content: center;
   gap: clamp(20px, 2.6vw, 42px);
   margin-top: clamp(28px, 5vh, 52px);
 }

@@ -73,10 +73,12 @@ export default function ImageUploader({ image, onChange, label = "Image", onUplo
     if (file) handleFile(file);
   }
 
-  async function removeImage() {
-    if (image?.filename) {
-      api.delete(`/uploads/${image.filename}`).catch(() => {});
-    }
+  // Only detaches the image from this form. The file itself is deliberately
+  // NOT deleted here: the change isn't saved until the admin clicks Save, so
+  // deleting now would leave the still-saved record pointing at a missing
+  // image if they cancel — and the same file may be used elsewhere. Unused
+  // files are cleaned up from the Media Library instead.
+  function removeImage() {
     onChange(null);
     setError("");
   }

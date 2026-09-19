@@ -1,9 +1,32 @@
-import Person from "../models/Person.js";
+import Person, { PERSON_TYPES, PERSON_TYPE_RANK } from "../models/Person.js";
+import Media from "../models/Media.js";
+
+// The public "People" section and the admin list must always agree, so both
+// read through the same ordering: main partner first, then co-partners, then
+// everyone else, each group by ascending `order` (oldest first on a tie). The
+// team is a handful of people, so sorting in memory is simpler and far less
+// fragile than a stored rank field that legacy records would lack.
+function displayCompare(a, b) {
+  const rankA = PERSON_TYPE_RANK[a.type] ?? PERSON_TYPE_RANK.other;
+  const rankB = PERSON_TYPE_RANK[b.type] ?? PERSON_TYPE_RANK.other;
+  return rankA - rankB || (a.order ?? 0) - (b.order ?? 0) || new Date(a.createdAt) - new Date(b.createdAt);
+}
+
+// Legacy records predate the `type` field, so "other" must also match a missing one.
+function typeFilter(type) {
+  return type === "other" ? { $or: [{ type: "other" }, { type: { $exists: false } }] } : { type };
+}
+
+// Public visitors must never see a stale roster after an admin edit.
+function noStore(res) {
+  res.set("Cache-Control", "no-store");
+}
 
 export async function listPersons(req, res, next) {
   try {
+    noStore(res);
     const isAdmin = Boolean(req.admin);
-    const { q, activeOnly, page = 1, limit = 50, sort = "order" } = req.query;
+    const { q, activeOnly, page = 1, limit = 50 } = req.query;
 
     const filter = {};
     if (!isAdmin || activeOnly === "true") filter.isActive = true;
@@ -15,17 +38,12 @@ export async function listPersons(req, res, next) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
 
-    const [items, total] = await Promise.all([
-      Person.find(filter)
-        .sort(sort)
-        .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
-      Person.countDocuments(filter)
-    ]);
+    const all = (await Person.find(filter)).sort(displayCompare);
+    const items = all.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
     res.json({
       success: true,
-      data: { items, total, page: pageNum, pages: Math.max(1, Math.ceil(total / limitNum)) }
+      data: { items, total: all.length, page: pageNum, pages: Math.max(1, Math.ceil(all.length / limitNum)) }
     });
   } catch (err) {
     next(err);
@@ -34,6 +52,7 @@ export async function listPersons(req, res, next) {
 
 export async function getPerson(req, res, next) {
   try {
+    noStore(res);
     const isAdmin = Boolean(req.admin);
     const person = await Person.findById(req.params.id);
     if (!person || (!isAdmin && !person.isActive)) {
@@ -45,36 +64,69 @@ export async function getPerson(req, res, next) {
   }
 }
 
-function validatePersonBody(body, { partial = false } = {}) {
-  const errors = {};
-  const required = ["name", "designation"];
-  if (!partial) {
-    for (const field of required) {
-      if (!body[field] || !String(body[field]).trim()) errors[field] = "Required.";
-    }
+// A stored image must always resolve. Uploaded images live in the Media
+// collection (see utils/imageStorage.js), so an /uploads/ url is only accepted
+// if the file actually exists — and the record is linked back to its Media
+// entry so the library's "in use" protection covers it.
+async function normalizeImage(image) {
+  if (!image || typeof image !== "object" || typeof image.url !== "string" || !image.url.trim()) {
+    return { error: "A photo is required." };
   }
-  if (body.links && !Array.isArray(body.links)) errors.links = "Links must be a list.";
+  const url = image.url.trim();
+  const alt = typeof image.alt === "string" ? image.alt.trim().slice(0, 200) : "";
+
+  if (url.startsWith("/uploads/")) {
+    const filename = url.slice("/uploads/".length);
+    const media = filename && !filename.includes("/") ? await Media.findOne({ filename }) : null;
+    if (!media) return { error: "This photo no longer exists. Please upload it again." };
+    return { image: { url, alt, filename: media.filename, media: media._id } };
+  }
+  if (/^https:\/\/\S+$/i.test(url) && url.length <= 2000) {
+    return { image: { url, alt, filename: "", media: null } };
+  }
+  return { error: "The photo URL is not valid." };
+}
+
+function validateFields(body, { partial }) {
+  const errors = {};
+  for (const field of ["name", "designation"]) {
+    const present = body[field] !== undefined;
+    if ((!partial || present) && (!body[field] || !String(body[field]).trim())) errors[field] = "Required.";
+  }
+  if (body.type !== undefined && !PERSON_TYPES.includes(body.type)) errors.type = "Invalid type.";
+  if (body.email && !/^\S+@\S+\.\S+$/.test(String(body.email).trim())) errors.email = "Enter a valid email address.";
+  if (body.links !== undefined && !Array.isArray(body.links)) errors.links = "Links must be a list.";
+  if (body.order !== undefined && !Number.isFinite(Number(body.order))) errors.order = "Order must be a number.";
   return errors;
+}
+
+function fail(res, errors) {
+  return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
 }
 
 export async function createPerson(req, res, next) {
   try {
     const body = req.body || {};
-    const errors = validatePersonBody(body);
-    if (Object.keys(errors).length) {
-      return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
-    }
+    const errors = validateFields(body, { partial: false });
 
-    const count = await Person.countDocuments();
+    const normalized = await normalizeImage(body.image);
+    if (normalized.error) errors.image = normalized.error;
+    if (Object.keys(errors).length) return fail(res, errors);
+
+    const type = body.type || "other";
+    const sameType = await Person.find(typeFilter(type));
+    const nextOrder = body.order !== undefined ? Number(body.order) : sameType.reduce((max, p) => Math.max(max, p.order ?? 0), -1) + 1;
+
     const person = await Person.create({
       name: String(body.name).trim(),
       designation: String(body.designation).trim(),
+      type,
       email: body.email || "",
       phone: body.phone || "",
       bio: body.bio || "",
-      image: body.image || null,
+      image: normalized.image,
       links: body.links || [],
-      order: body.order !== undefined ? body.order : count,
+      order: nextOrder,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : true
     });
 
@@ -91,14 +143,24 @@ export async function updatePerson(req, res, next) {
       return res.status(404).json({ success: false, message: "Person not found." });
     }
     const body = req.body || {};
-    const errors = validatePersonBody(body, { partial: true });
-    if (Object.keys(errors).length) {
-      return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
-    }
+    const errors = validateFields(body, { partial: true });
 
-    const assignable = ["name", "designation", "email", "phone", "bio", "image", "links", "order", "isActive"];
+    if (body.image !== undefined) {
+      const normalized = await normalizeImage(body.image);
+      if (normalized.error) errors.image = normalized.error;
+      else body.image = normalized.image;
+    }
+    if (Object.keys(errors).length) return fail(res, errors);
+
+    const assignable = ["name", "designation", "type", "email", "phone", "bio", "image", "links", "order", "isActive"];
     for (const field of assignable) {
       if (body[field] !== undefined) person[field] = body[field];
+    }
+
+    // Legacy records may have no photo; they stay editable and can be
+    // deactivated, but can't be (re)published without one.
+    if (person.isActive && !person.image?.url) {
+      return fail(res, { image: "Add a photo before making this person active." });
     }
 
     await person.save();
@@ -108,6 +170,9 @@ export async function updatePerson(req, res, next) {
   }
 }
 
+// Moves a person up/down within their own type group, so the main partner can
+// never be pushed below a co-partner. Orders are renumbered 0..n first so a
+// swap works even when legacy records share the same `order` value.
 export async function reorderPerson(req, res, next) {
   try {
     const person = await Person.findById(req.params.id);
@@ -119,19 +184,16 @@ export async function reorderPerson(req, res, next) {
       return res.status(400).json({ success: false, message: "direction must be 'up' or 'down'." });
     }
 
-    const neighbor = await Person.findOne({ order: { [direction === "up" ? "$lt" : "$gt"]: person.order } }).sort({
-      order: direction === "up" ? -1 : 1
-    });
-    if (!neighbor) {
-      return res.json({ success: true, data: { person } });
+    const group = (await Person.find(typeFilter(person.type || "other"))).sort(displayCompare);
+    const index = group.findIndex((p) => p._id.equals(person._id));
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target >= 0 && target < group.length) {
+      [group[index], group[target]] = [group[target], group[index]];
     }
 
-    const tmp = person.order;
-    person.order = neighbor.order;
-    neighbor.order = tmp;
-    await Promise.all([person.save(), neighbor.save()]);
+    await Person.bulkWrite(group.map((p, i) => ({ updateOne: { filter: { _id: p._id }, update: { $set: { order: i } } } })));
 
-    res.json({ success: true, data: { person } });
+    res.json({ success: true, data: { person: await Person.findById(person._id) } });
   } catch (err) {
     next(err);
   }

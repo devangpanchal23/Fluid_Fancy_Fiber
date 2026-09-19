@@ -312,15 +312,18 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
   });
 
   let personId;
-  await t.test("creates a person", async () => {
-    const r = await req("/api/people", { method: "POST", body: { name: "Test Person", designation: "Tester" } });
+  let personPhoto;
+  await t.test("creates a person (a photo is required)", async () => {
+    const up = await upload("/api/uploads", "test-person.png");
+    personPhoto = { url: up.data.data.url, alt: "" };
+    const r = await req("/api/people", { method: "POST", body: { name: "Test Person", designation: "Tester", image: personPhoto } });
     assert.equal(r.status, 201);
     personId = r.data.data.person._id;
     assert.ok(personId);
   });
 
   await t.test("public (logged-out) people list only returns active people", async () => {
-    const inactive = await req("/api/people", { method: "POST", body: { name: "Test Person Inactive", designation: "Tester", isActive: false } });
+    const inactive = await req("/api/people", { method: "POST", body: { name: "Test Person Inactive", designation: "Tester", isActive: false, image: personPhoto } });
     assert.equal(inactive.status, 201);
 
     const savedCookie = cookie;

@@ -8,6 +8,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 const EMPTY = {
   name: "",
   designation: "",
+  type: "other",
   email: "",
   phone: "",
   bio: "",
@@ -43,6 +44,7 @@ export default function PersonForm() {
         const loaded = {
           name: p.name,
           designation: p.designation,
+          type: p.type || "other",
           email: p.email || "",
           phone: p.phone || "",
           bio: p.bio || "",
@@ -96,9 +98,25 @@ export default function PersonForm() {
     };
   }
 
+  // Mirrors the server rules so a person can never be saved without the
+  // required fields and a photo; the server re-validates regardless.
+  function validate() {
+    const found = {};
+    if (!form.name.trim()) found.name = "Required.";
+    if (!form.designation.trim()) found.designation = "Required.";
+    if (!form.image?.url) found.image = "A photo is required.";
+    return found;
+  }
+
   async function save() {
     if (imageUploading) {
       toast.error("Please wait for the photo upload to finish before saving.");
+      return;
+    }
+    const found = validate();
+    if (Object.keys(found).length) {
+      setErrors(found);
+      toast.error(found.image && Object.keys(found).length === 1 ? found.image : "Please fix the highlighted fields.");
       return;
     }
     setErrors({});
@@ -149,9 +167,20 @@ export default function PersonForm() {
           <span className="ff-field-error">{errors.designation || ""}</span>
         </label>
 
-        <label className="ff-field">
+        <label className={`ff-field${errors.type ? " has-error" : ""}`}>
+          <span className="ff-field-label">Type</span>
+          <select value={form.type} onChange={(e) => set("type", e.target.value)}>
+            <option value="main-partner">Main partner</option>
+            <option value="co-partner">Co-partner</option>
+            <option value="other">Other</option>
+          </select>
+          <span className="ff-field-error">{errors.type || ""}</span>
+        </label>
+
+        <label className={`ff-field${errors.email ? " has-error" : ""}`}>
           <span className="ff-field-label">Email</span>
           <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+          <span className="ff-field-error">{errors.email || ""}</span>
         </label>
 
         <label className="ff-field">
@@ -171,8 +200,9 @@ export default function PersonForm() {
       </label>
 
       <fieldset className="ff-admin-fieldset">
-        <legend>Photo</legend>
+        <legend>Photo (required)</legend>
         <ImageUploader image={form.image} onChange={(image) => set("image", image)} label="photo" onUploadingChange={setImageUploading} />
+        {errors.image && <p className="ff-field-error">{errors.image}</p>}
       </fieldset>
 
       <fieldset className="ff-admin-fieldset">

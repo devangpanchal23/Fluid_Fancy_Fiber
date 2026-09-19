@@ -10,6 +10,24 @@ function resolveSrc(url) {
   return bundledImages[url] || resolveUploadUrl(url);
 }
 
+const TYPE_LABELS = { "main-partner": "Main partner", "co-partner": "Co-partner", other: "Other" };
+const typeOf = (p) => p.type || "other";
+
+// Shows the stored photo, or a clear "needs photo" marker when it is missing
+// or fails to load — so a legacy/broken record is obvious and one click from
+// being fixed, instead of a silent blank square.
+function PersonThumb({ person }) {
+  const [broken, setBroken] = useState(false);
+  if (!person.image?.url || broken) {
+    return (
+      <Link to={`/admin/people/${person._id}/edit`} className="ff-admin-table-thumb ff-admin-table-thumb--empty" title="Photo missing — click to add one">
+        <span aria-hidden="true">!</span>
+      </Link>
+    );
+  }
+  return <img src={resolveSrc(person.image.url)} alt={person.image.alt || person.name} className="ff-admin-table-thumb" onError={() => setBroken(true)} />;
+}
+
 export default function PersonList() {
   const toast = useToast();
   const [items, setItems] = useState([]);
@@ -35,7 +53,7 @@ export default function PersonList() {
       const { person: updated } = await api.put(`/people/${person._id}`, { isActive: !person.isActive });
       setItems((it) => it.map((p) => (p._id === person._id ? updated : p)));
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.errors?.image || err.message);
     }
   }
 
@@ -88,6 +106,7 @@ export default function PersonList() {
                 <th aria-label="Photo" />
                 <th>Name</th>
                 <th>Designation</th>
+                <th>Type</th>
                 <th>Status</th>
                 <th aria-label="Order" />
                 <th aria-label="Actions" />
@@ -97,11 +116,7 @@ export default function PersonList() {
               {items.map((p, i) => (
                 <tr key={p._id}>
                   <td>
-                    {p.image?.url ? (
-                      <img src={resolveSrc(p.image.url)} alt={p.image.alt || ""} className="ff-admin-table-thumb" />
-                    ) : (
-                      <span className="ff-admin-table-thumb ff-admin-table-thumb--empty" />
-                    )}
+                    <PersonThumb person={p} />
                   </td>
                   <td>
                     <Link to={`/admin/people/${p._id}/edit`} className="ff-admin-table-title">
@@ -109,6 +124,7 @@ export default function PersonList() {
                     </Link>
                   </td>
                   <td>{p.designation}</td>
+                  <td>{TYPE_LABELS[typeOf(p)]}</td>
                   <td>
                     <button
                       type="button"
@@ -119,10 +135,10 @@ export default function PersonList() {
                     </button>
                   </td>
                   <td className="ff-admin-table-reorder">
-                    <button type="button" onClick={() => reorder(p, "up")} disabled={i === 0} aria-label="Move up">
+                    <button type="button" onClick={() => reorder(p, "up")} disabled={i === 0 || typeOf(items[i - 1]) !== typeOf(p)} aria-label="Move up">
                       ↑
                     </button>
-                    <button type="button" onClick={() => reorder(p, "down")} disabled={i === items.length - 1} aria-label="Move down">
+                    <button type="button" onClick={() => reorder(p, "down")} disabled={i === items.length - 1 || typeOf(items[i + 1]) !== typeOf(p)} aria-label="Move down">
                       ↓
                     </button>
                   </td>

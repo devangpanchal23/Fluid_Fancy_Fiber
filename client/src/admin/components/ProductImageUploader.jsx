@@ -101,8 +101,8 @@ export default function ProductImageUploader({ images, onChange, onUploadingChan
   }
 
   function removeAt(i) {
-    const img = images[i];
-    if (img?.filename) api.delete(`/uploads/${img.filename}`).catch(() => {});
+    // Detach only — deleting the file now would break the saved product if
+    // the admin cancels, or another item sharing it. See ImageUploader.
     onChange(images.filter((_, idx) => idx !== i));
   }
 

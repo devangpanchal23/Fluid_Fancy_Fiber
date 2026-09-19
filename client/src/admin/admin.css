@@ -438,6 +438,12 @@
 }
 .ff-admin-table-thumb--empty {
   background: var(--ff-bg-alt);
+  display: grid;
+  place-items: center;
+  color: #a33a2a;
+  border-style: dashed;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .ff-admin-badge {

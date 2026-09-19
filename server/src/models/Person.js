@@ -15,10 +15,16 @@ const linkSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Display order on the public site: main partner first, then co-partners,
+// then everyone else; within a type, ascending `order`.
+export const PERSON_TYPES = ["main-partner", "co-partner", "other"];
+export const PERSON_TYPE_RANK = { "main-partner": 0, "co-partner": 1, other: 2 };
+
 const personSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 120 },
     designation: { type: String, required: true, trim: true, maxlength: 120 },
+    type: { type: String, enum: PERSON_TYPES, default: "other" },
     email: { type: String, trim: true, lowercase: true, maxlength: 200 },
     phone: { type: String, trim: true, maxlength: 40 },
     bio: { type: String, trim: true, maxlength: 1000 },

@@ -136,45 +136,6 @@ export const CASE_METRICS = [
   { v: "−18%", k: "Loom stops" }
 ];
 
-export const PEOPLE = [
-  {
-    id: "team-0",
-    name: "Meera Nair",
-    role: "Managing partner",
-    tag: "Partner",
-    initials: "MN",
-    bio: "Runs the mill floor and signs off every programme brief. Twenty years in ring spinning, most of it in quality.",
-    links: [
-      { label: "LinkedIn", href: "#" },
-      { label: "fluidfancyenterprisepvtltd@gmail.com", href: "#contact" }
-    ]
-  },
-  {
-    id: "team-1",
-    name: "Arjun Rao",
-    role: "Co-partner, exports",
-    tag: "Co-partner",
-    initials: "AR",
-    bio: "Handles quoting, documentation and shipping across six markets. Your first reply usually comes from him.",
-    links: [
-      { label: "LinkedIn", href: "#" },
-      { label: "fluidfancyenterprisepvtltd@gmail.com", href: "#contact" }
-    ]
-  },
-  // {
-  //   id: "team-2",
-  //   name: "Nisha Patel",
-  //   role: "Social & community",
-  //   tag: "Social media",
-  //   initials: "NP",
-  //   bio: "Posts the floor as it actually looks — lot photos, trial runs, shade cards. Message her anywhere and it reaches the mill.",
-  //   links: [
-  //     { label: "Instagram", href: "#" },
-  //     { label: "WhatsApp", href: "#contact" }
-  //   ]
-  // }
-];
-
 export const REVIEWS = [
   {
     text: "Three suppliers, three different 40s. Fluid was the only one whose second container matched the first — we stopped re-testing on arrival after the third lot.",

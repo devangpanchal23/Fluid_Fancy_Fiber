@@ -1414,6 +1414,31 @@ textarea::placeholder {
   background: var(--ff-ink);
   color: var(--ff-bg);
 }
+.ff-person--skeleton {
+  min-height: 320px;
+}
+.ff-person--skeleton .ff-person-media {
+  animation: ff-people-pulse 1.4s ease-in-out infinite;
+}
+@keyframes ff-people-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.ff-people-note {
+  margin: clamp(28px, 5vh, 52px) 0 0;
+  font-size: 14px;
+  color: var(--ff-muted);
+}
+.ff-people-retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ff-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
 
 /* ---------- proof ---------- */
 

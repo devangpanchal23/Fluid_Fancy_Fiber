@@ -1,15 +1,21 @@
-import Person, { PERSON_TYPES, PERSON_TYPE_RANK } from "../models/Person.js";
+import Person, { PERSON_TYPES, PERSON_TYPE_RANK, pinnedRank } from "../models/Person.js";
 import Media from "../models/Media.js";
 
 // The public "People" section and the admin list must always agree, so both
-// read through the same ordering: main partner first, then co-partners, then
-// everyone else, each group by ascending `order` (oldest first on a tie). The
-// team is a handful of people, so sorting in memory is simpler and far less
-// fragile than a stored rank field that legacy records would lack.
+// read through the same ordering: the pinned partners first (Jignesh Kakadiya,
+// then Laljibhai Dhameliya), then main partner, co-partners and everyone else,
+// each group by ascending `order` (oldest first on a tie). The team is a
+// handful of people, so sorting in memory is simpler and far less fragile than
+// a stored rank field that legacy records would lack.
 function displayCompare(a, b) {
   const rankA = PERSON_TYPE_RANK[a.type] ?? PERSON_TYPE_RANK.other;
   const rankB = PERSON_TYPE_RANK[b.type] ?? PERSON_TYPE_RANK.other;
-  return rankA - rankB || (a.order ?? 0) - (b.order ?? 0) || new Date(a.createdAt) - new Date(b.createdAt);
+  return (
+    pinnedRank(a.name) - pinnedRank(b.name) ||
+    rankA - rankB ||
+    (a.order ?? 0) - (b.order ?? 0) ||
+    new Date(a.createdAt) - new Date(b.createdAt)
+  );
 }
 
 // Legacy records predate the `type` field, so "other" must also match a missing one.

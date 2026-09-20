@@ -307,20 +307,27 @@ textarea::placeholder {
 /* ---------- preloader ---------- */
 
 .ff-preloader {
+  --ff-brand-green: #6cb33f;
   position: fixed;
   inset: 0;
   z-index: 95;
-  background: var(--ff-ink);
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 46%, rgba(108, 179, 63, 0.16), transparent 70%),
+    radial-gradient(ellipse 90% 70% at 50% 110%, rgba(140, 124, 94, 0.18), transparent 65%),
+    var(--ff-bg);
   display: grid;
   place-items: center;
+  overflow: hidden;
   transition: clip-path 820ms var(--ease-out), opacity 400ms ease 420ms;
 }
 .ff-preloader::before {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.14;
-  background: repeating-linear-gradient(to right, rgba(244, 240, 232, 0.5) 0 1px, transparent 1px 12.5%);
+  opacity: 0.5;
+  background: repeating-linear-gradient(to right, rgba(140, 124, 94, 0.14) 0 1px, transparent 1px 12.5%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 20%, transparent 80%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 20%, transparent 80%);
 }
 .ff-preloader.is-exiting {
   clip-path: inset(0 0 100% 0);
@@ -331,27 +338,59 @@ textarea::placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 26px;
+  gap: clamp(22px, 4vh, 34px);
+}
+/* No transform/opacity/z-index here: an isolated wrapper would stop the logo blending into the page. */
+.ff-preloader-logo-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+/* Soft halo that "breathes" behind the mark. */
+.ff-preloader-logo-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -18% -8%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(108, 179, 63, 0.28), transparent);
+  filter: blur(18px);
+  animation: ff-preloader-breathe 2.4s ease-in-out infinite;
 }
 .ff-preloader-logo {
-  width: clamp(240px, 28vw, 360px);
+  position: relative;
+  z-index: 1;
+  width: clamp(250px, 30vw, 400px);
   height: auto;
-  filter: invert(1) brightness(1.6);
-  mix-blend-mode: screen;
-  animation: ff-up 640ms var(--ease-pop) both;
+  /* The JPG has a white backdrop: lift near-whites to pure white and multiply,
+     so it melts into the cream page instead of reading as a pasted picture. */
+  filter: contrast(1.08) saturate(1.05);
+  mix-blend-mode: multiply;
+  animation: ff-up 700ms var(--ease-pop) both;
 }
 .ff-preloader-bar {
   position: relative;
   width: clamp(180px, 24vw, 300px);
-  height: 2px;
-  background: rgba(244, 240, 232, 0.22);
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(140, 124, 94, 0.22);
+  overflow: hidden;
 }
 .ff-preloader-fill {
   position: absolute;
   inset: 0;
-  background: var(--ff-accent);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8fd45f, var(--ff-brand-green));
   transform-origin: left;
   transition: transform 100ms linear;
+}
+.ff-preloader-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(-100%);
+  animation: ff-preloader-shimmer 1.2s ease-in-out infinite;
 }
 .ff-preloader-label {
   display: flex;
@@ -360,13 +399,37 @@ textarea::placeholder {
   font-size: 10px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(244, 240, 232, 0.55);
+  color: var(--ff-muted);
+  animation: ff-in 700ms ease-out 250ms both;
 }
 .ff-preloader-pct {
+  min-width: 3ch;
   font-family: var(--font-heading);
   font-size: 13px;
   letter-spacing: 0.12em;
-  color: var(--ff-bg);
+  color: var(--ff-ink);
+}
+@keyframes ff-preloader-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+@keyframes ff-preloader-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ff-preloader-logo-wrap::before,
+  .ff-preloader-fill::after {
+    animation: none;
+  }
 }
 
 /* ---------- scroll progress ---------- */
@@ -1406,17 +1469,6 @@ textarea::placeholder {
 .ff-person:hover .ff-person-photo {
   transform: scale(1.05);
 }
-.ff-person-tag {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  padding: 7px 11px;
-  font-size: 9.5px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--ff-bg);
-  background: rgba(23, 20, 15, 0.82);
-}
 .ff-person-name {
   font-family: var(--font-heading);
   font-weight: 600;
@@ -1482,61 +1534,6 @@ textarea::placeholder {
   text-decoration: underline;
   cursor: pointer;
   font: inherit;
-}
-
-/* ---------- proof ---------- */
-
-.ff-proof-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: clamp(28px, 4vw, 70px);
-  margin-top: 16px;
-  align-items: start;
-}
-.ff-proof-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 18px;
-  margin-top: 30px;
-  padding-top: 24px;
-  border-top: 1px solid var(--ff-line);
-}
-.ff-proof-metric-value {
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: clamp(26px, 2.4vw, 36px);
-  line-height: 1;
-}
-.ff-proof-metric-label {
-  margin-top: 7px;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ff-muted);
-}
-.ff-proof-figure {
-  position: relative;
-  margin: 0;
-  aspect-ratio: 4 / 3;
-  border: 1px solid var(--ff-line-strong);
-  background: #e6dfd0;
-  overflow: hidden;
-}
-.ff-proof-figure img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: saturate(0.5) sepia(0.14) contrast(1.03);
-}
-.ff-proof-caption {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 11px;
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--ff-muted);
 }
 
 /* ---------- reviews ---------- */

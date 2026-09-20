@@ -8,7 +8,7 @@ export default function Faq() {
     <section id="faq" className="ff-section">
       <div className="ff-faq-grid">
         <div className="ff-faq-sticky" data-reveal="left">
-          <div className="ff-kicker">07 — Before you ask</div>
+          <div className="ff-kicker">06 — Before you ask</div>
           <h2 className="ff-heading">The questions buyers open with</h2>
           <p className="ff-lede" style={{ maxWidth: "34ch", marginTop: 18 }}>
             If yours isn&apos;t here, our technical desk answers within one working day.

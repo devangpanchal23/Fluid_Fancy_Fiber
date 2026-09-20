@@ -29,7 +29,7 @@ export default function Reviews() {
       <div className="ff-reviews-head" data-reveal="up">
         <div className="ff-reviews-rule-row">
           <span className="ff-reviews-rule" />
-          <span className="ff-kicker">06 — Kind words</span>
+          <span className="ff-kicker">05 — Kind words</span>
           <span className="ff-reviews-rule" />
         </div>
         <h2 className="ff-heading" style={{ fontSize: "clamp(32px, 4.4vw, 66px)" }}>

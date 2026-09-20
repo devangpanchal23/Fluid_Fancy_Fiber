@@ -49,7 +49,7 @@ export default function Contact() {
     <section id="contact" className="ff-section ff-section--dark">
       <div className="ff-contact-grid">
         <div data-reveal="left">
-          <div className="ff-kicker ff-kicker--dark">08 — Enquiries</div>
+          <div className="ff-kicker ff-kicker--dark">07 — Enquiries</div>
           <h2 className="ff-heading">Send the count, we&apos;ll send the cone</h2>
           <div className="ff-contact-copy">
             <p>

@@ -6,6 +6,15 @@ export default function Preloader({ onDone }) {
   const [exiting, setExiting] = useState(false);
   const [hidden, setHidden] = useState(false);
 
+  // Keep the page from scrolling behind the loader.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setPct(100);
@@ -43,7 +52,9 @@ export default function Preloader({ onDone }) {
   return (
     <div className={`ff-preloader${exiting ? " is-exiting" : ""}`} role="status" aria-live="polite">
       <div className="ff-preloader-inner">
-        <img className="ff-preloader-logo" src={images.logo} alt="Fluid Fancy Fibre LLP" />
+        <div className="ff-preloader-logo-wrap">
+          <img className="ff-preloader-logo" src={images.logo} alt="Fluid Fancy Fibre LLP" />
+        </div>
         <div className="ff-preloader-bar">
           <div className="ff-preloader-fill" style={{ transform: `scaleX(${pct / 100})` }} />
         </div>

@@ -12,7 +12,6 @@ import VideoGallery from "./components/VideoGallery";
 import Process from "./components/Process";
 import Mill from "./components/Mill";
 import People from "./components/People";
-import Proof from "./components/Proof";
 import Reviews from "./components/Reviews";
 import Faq from "./components/Faq";
 import Contact from "./components/Contact";
@@ -55,7 +54,6 @@ export default function App() {
       <Process />
       <Mill />
       <People />
-      <Proof />
       <Reviews />
       <Faq />
       <Contact />

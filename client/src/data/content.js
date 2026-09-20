@@ -194,7 +194,7 @@ export const FAQS = [
 
 export const CONTACTS = [
   { label: "Technical desk", value: "fluidfancyenterprisepvtltd@gmail.com", sub: "Replies within one working day" },
-  { label: "WhatsApp / phone", value: "+91 90000 00000", sub: "Mon–Sat, 9:00–18:00 IST" },
+  { label: "WhatsApp / phone", value: "9228846685", sub: "Mon–Sat, 9:00–18:00 IST" },
   { label: "Mill address", value: "Industrial Textile Zone", sub: "Manufacturing District, Global Hub" }
 ];
 
@@ -214,8 +214,8 @@ export const FOOTER_COLUMNS = [
     title: "Contact",
     links: [
       { label: "Enquiry form", href: "#contact" },
-      { label: "fluidfancyenterprisepvtltd@gmail.com", href: "#contact" },
-      { label: "+91 90000 00000", href: "#contact" }
+      { label: "fluidfancyenterprisepvtltd@gmail.com", href: "mailto:fluidfancyenterprisepvtltd@gmail.com" },
+      { label: "9228846685", href: "tel:9228846685" }
     ]
   }
 ];

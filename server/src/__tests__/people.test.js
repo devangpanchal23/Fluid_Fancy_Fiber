@@ -145,6 +145,31 @@ test("People: admin changes are mirrored exactly on the public list", { skip: !d
     assert.equal(names[0], "TP Main", "already first in its group: stays put, never crosses into main partner");
   });
 
+  await t.test("Jignesh Kakadiya then Laljibhai Dhameliya always lead, whatever their type", async () => {
+    // Created in the wrong order, and typed so that type rank alone would put Laljibhai first.
+    const lal = await req("/api/people", {
+      method: "POST",
+      body: { name: "Laljibhai  Dhameliya", designation: "Partner", type: "main-partner", image: await uploadPhoto("test-people-lal.png", "lal") }
+    });
+    const jig = await req("/api/people", {
+      method: "POST",
+      body: { name: "Jignesh Kakadiya", designation: "Partner", type: "co-partner", image: await uploadPhoto("test-people-jig.png", "jig") }
+    });
+    assert.equal(lal.status, 201);
+    assert.equal(jig.status, 201);
+
+    try {
+      // Unfiltered: the helpers above only keep "TP " test names.
+      const publicNames = (await req("/api/people?activeOnly=true&limit=100", { anon: true })).data.data.items.map((p) => p.name);
+      const adminNames = (await req("/api/people?limit=100")).data.data.items.map((p) => p.name);
+      assert.deepEqual(publicNames.slice(0, 2), ["Jignesh Kakadiya", "Laljibhai  Dhameliya"]);
+      assert.deepEqual(adminNames.slice(0, 2), publicNames.slice(0, 2), "admin list agrees");
+    } finally {
+      await req(`/api/people/${lal.data.data.person._id}`, { method: "DELETE" });
+      await req(`/api/people/${jig.data.data.person._id}`, { method: "DELETE" });
+    }
+  });
+
   await t.test("admin list shows everyone (active and inactive) with previews", async () => {
     await req(`/api/people/${ids.other}`, { method: "PUT", body: { isActive: false } });
     const admin = await adminList();

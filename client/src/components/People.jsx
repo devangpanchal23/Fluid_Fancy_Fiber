@@ -4,8 +4,6 @@ import { getApiBase, resolveUploadUrl } from "../apiBase";
 
 const API_URL = getApiBase();
 
-const TYPE_LABELS = { "main-partner": "Main Partner", "co-partner": "Co-Partner" };
-
 function resolveImage(url) {
   return bundledImages[url] || resolveUploadUrl(url);
 }
@@ -24,7 +22,6 @@ function fromApiPerson(p) {
     id: p._id,
     name: p.name,
     role: p.designation,
-    tag: TYPE_LABELS[p.type] || p.designation,
     initials: initialsOf(p.name),
     image: p.image?.url || null,
     bio: p.bio || "",
@@ -34,7 +31,7 @@ function fromApiPerson(p) {
 
 // The admin panel is the single source of truth: this section renders exactly
 // what GET /api/people returns (active people, already in display order —
-// main partner, co-partners, then the rest) and nothing else. There is no
+// Jignesh Kakadiya, Laljibhai Dhameliya, then the rest) and nothing else. There is no
 // built-in fallback roster, so what visitors see can never disagree with what
 // the admin manages. It refetches whenever the tab regains focus, so an edit
 // made in the admin shows up without a manual hard refresh.
@@ -128,7 +125,6 @@ export default function People() {
                 <i className="corner br" />
                 <div className="ff-person-media">
                   <PersonPhoto person={p} />
-                  <span className="ff-person-tag">{p.tag}</span>
                 </div>
                 <h3 className="ff-person-name">{p.name}</h3>
                 <div className="ff-person-role">{p.role}</div>

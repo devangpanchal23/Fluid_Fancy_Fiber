@@ -1,5 +1,5 @@
 // Real photography available for this project (see project README for provenance).
-import logo from "./new_logo_fff.png";
+import logo from "./updated_final_logo.jpg";
 import spinningFrames from "./pasted-1788530038937-0.png"; // cones on the spinning frame
 import fibreAndCones from "./pasted-1788530077263-0.png"; // cotton, cones and shelving
 

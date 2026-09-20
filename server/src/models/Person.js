@@ -20,6 +20,15 @@ const linkSchema = new mongoose.Schema(
 export const PERSON_TYPES = ["main-partner", "co-partner", "other"];
 export const PERSON_TYPE_RANK = { "main-partner": 0, "co-partner": 1, other: 2 };
 
+// The partners who always lead the roster, in this exact order (lowercased,
+// single-spaced names). Anyone not listed follows by type rank, then `order`.
+export const PINNED_PEOPLE = ["jignesh kakadiya", "laljibhai dhameliya"];
+
+export function pinnedRank(name) {
+  const i = PINNED_PEOPLE.indexOf(String(name || "").trim().replace(/\s+/g, " ").toLowerCase());
+  return i === -1 ? PINNED_PEOPLE.length : i;
+}
+
 const personSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 120 },

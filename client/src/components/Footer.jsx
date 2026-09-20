@@ -24,7 +24,6 @@ export default function Footer() {
       </div>
       <div className="ff-footer-bottom">
         <span>© {new Date().getFullYear()} Fluid Fancy Fibre LLP</span>
-        <span>Woman-led · Global manufacture</span>
       </div>
     </footer>
   );

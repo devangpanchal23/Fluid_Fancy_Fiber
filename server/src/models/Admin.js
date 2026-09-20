@@ -9,7 +9,11 @@ const adminSchema = new mongoose.Schema(
     role: { type: String, enum: ["admin"], default: "admin" },
     loginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date, default: null },
-    lastLoginAt: { type: Date, default: null }
+    lastLoginAt: { type: Date, default: null },
+    // Bumped when the password is changed from the profile page. Session
+    // tokens carry the version they were issued under, so every older token is
+    // rejected (see middleware/auth.js).
+    tokenVersion: { type: Number, default: 0 }
   },
   { timestamps: true }
 );
@@ -31,6 +35,7 @@ adminSchema.set("toJSON", {
     delete ret.passwordHash;
     delete ret.loginAttempts;
     delete ret.lockUntil;
+    delete ret.tokenVersion;
     return ret;
   }
 });

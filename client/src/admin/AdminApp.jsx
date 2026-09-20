@@ -19,6 +19,7 @@ import ConeLibraryList from "./pages/ConeLibraryList";
 import ConeLibraryForm from "./pages/ConeLibraryForm";
 import EnquiryList from "./pages/EnquiryList";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import "./admin.css";
 
 export default function AdminApp() {
@@ -54,6 +55,7 @@ export default function AdminApp() {
             <Route path="cone-library/:id/edit" element={<ConeLibraryForm />} />
             <Route path="enquiries" element={<EnquiryList />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
       </ToastProvider>

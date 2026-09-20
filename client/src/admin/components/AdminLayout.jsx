@@ -12,7 +12,8 @@ const LABELS = {
   categories: "Categories",
   "cone-library": "Cone library",
   enquiries: "Enquiries",
-  settings: "Settings"
+  settings: "Settings",
+  profile: "My profile"
 };
 
 function useBreadcrumb() {

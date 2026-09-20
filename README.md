@@ -151,6 +151,8 @@ All responses use `{ success: true, data }` or `{ success: false, message, error
 | POST   | `/api/admin/logout`         | Admin       | Clears the session cookie |
 | GET    | `/api/admin/me`             | Admin       | Current admin profile |
 | PUT    | `/api/admin/me/password`    | Admin       | Change password (requires current password) |
+| PUT    | `/api/admin/me/profile`     | Admin       | Update the logged-in admin's own username and/or email — `{ name?, email?, currentPassword? }`; changing the email needs `currentPassword` |
+| POST   | `/api/admin/me/change-password` | Admin   | `{ currentPassword, newPassword, confirmPassword }` — 10+ chars with a letter and a number; ends every session, so the admin logs in again |
 | GET    | `/api/products`             | Public\*    | List products/Types — `?q=&status=&category=&featured=&page=&limit=&sort=` (default sort `order -featured`). Anonymous callers always get `status=active` only, regardless of query |
 | GET    | `/api/products/:id`         | Public\*    | Get one product/Type (404 if not `active` and not an admin) |
 | POST   | `/api/products`             | Admin       | Create a product/Type (validated; rejects duplicate slug) — see [Product Hierarchy](#product-hierarchy) |

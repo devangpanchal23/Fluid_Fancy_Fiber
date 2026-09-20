@@ -57,6 +57,16 @@ export default function AdminHeader({ onMenuClick, breadcrumb }) {
         </button>
         {menuOpen && (
           <div className="ff-admin-profile-menu" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                navigate("/admin/profile");
+              }}
+            >
+              My Profile
+            </button>
             <button type="button" role="menuitem" onClick={handleLogout}>
               Log out
             </button>

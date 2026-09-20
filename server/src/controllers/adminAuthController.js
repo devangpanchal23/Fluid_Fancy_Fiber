@@ -2,10 +2,10 @@ import Admin from "../models/Admin.js";
 import { signAdminToken, TOKEN_MAX_AGE_MS } from "../utils/jwt.js";
 import { COOKIE_NAME } from "../middleware/auth.js";
 
-const MAX_ATTEMPTS = 5;
-const LOCK_MS = 15 * 60 * 1000;
+export const MAX_ATTEMPTS = 5;
+export const LOCK_MS = 15 * 60 * 1000;
 
-function cookieOptions() {
+export function cookieOptions() {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

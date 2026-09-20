@@ -12,7 +12,7 @@ function getSecret() {
 }
 
 export function signAdminToken(admin) {
-  return jwt.sign({ sub: admin._id.toString(), email: admin.email }, getSecret(), { expiresIn: TOKEN_TTL });
+  return jwt.sign({ sub: admin._id.toString(), email: admin.email, v: admin.tokenVersion || 0 }, getSecret(), { expiresIn: TOKEN_TTL });
 }
 
 export function verifyAdminToken(token) {

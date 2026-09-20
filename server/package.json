@@ -9,6 +9,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
+    "seed:cone-library": "node src/scripts/seedConeLibrary.js",
     "migrate:products": "node src/scripts/migrateProducts.js",
     "migrate:variants": "node src/scripts/migrateProductsToVariants.js",
     "migrate:media": "node src/scripts/migrateImagesToMedia.js",

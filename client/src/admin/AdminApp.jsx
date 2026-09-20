@@ -15,6 +15,8 @@ import VideoList from "./pages/VideoList";
 import VideoForm from "./pages/VideoForm";
 import PersonList from "./pages/PersonList";
 import PersonForm from "./pages/PersonForm";
+import ConeLibraryList from "./pages/ConeLibraryList";
+import ConeLibraryForm from "./pages/ConeLibraryForm";
 import EnquiryList from "./pages/EnquiryList";
 import Settings from "./pages/Settings";
 import "./admin.css";
@@ -47,6 +49,9 @@ export default function AdminApp() {
             <Route path="people" element={<PersonList />} />
             <Route path="people/new" element={<PersonForm />} />
             <Route path="people/:id/edit" element={<PersonForm />} />
+            <Route path="cone-library" element={<ConeLibraryList />} />
+            <Route path="cone-library/new" element={<ConeLibraryForm />} />
+            <Route path="cone-library/:id/edit" element={<ConeLibraryForm />} />
             <Route path="enquiries" element={<EnquiryList />} />
             <Route path="settings" element={<Settings />} />
           </Route>

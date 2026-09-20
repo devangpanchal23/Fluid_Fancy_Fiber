@@ -106,15 +106,6 @@ export const LINES = [
   }
 ];
 
-export const GALLERY = [
-  { id: "gal-0", label: "Mono 40s", ref: "P/40", image: "mill" },
-  { id: "gal-1", label: "Lino 30s", ref: "L/30", image: "hero" },
-  { id: "gal-2", label: "Cascet 24s", ref: "C/24", image: "mill" },
-  { id: "gal-3", label: "Slub 16s", ref: "S/16", image: "hero" },
-  { id: "gal-4", label: "Dyed cones", ref: "D/XX", image: "mill" },
-  { id: "gal-5", label: "Ready beam", ref: "B/220", image: "hero" }
-];
-
 export const STEPS = [
   { num: "01", title: "Fibre intake", body: "Bale-by-bale inspection for staple length, micronaire and trash before anything reaches the line." },
   { num: "02", title: "Blowroom & carding", body: "Opening and cleaning tuned per blend, with waste extraction logged against the lot." },

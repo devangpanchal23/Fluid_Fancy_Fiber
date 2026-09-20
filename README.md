@@ -40,6 +40,7 @@ The catalogue shown on the public site is now backed by MongoDB — products are
 - **Category management** — add/rename/activate/deactivate/delete/reorder, with an uploaded image per category, and delete blocked while any product still references the category.
 - **Video Gallery management** — upload direct-to-Cloudinary with a real progress bar, title/description, optional thumbnail override, publish/draft toggle, reordering, delete (see [Video Gallery](#video-gallery)).
 - **People/Team management** — full CRUD (name, designation, email, phone, bio, uploaded photo, links, active/inactive, display order) with search and up/down reordering; the public People section renders whatever's here.
+- **Cone library management** — full CRUD for the "Cone library" grid (product image picked from the Media Library or uploaded, product name, product details), all three required, with up/down reordering; the public Cone library section renders whatever's here. On a fresh database run `npm run seed:cone-library --prefix server` once to load the six original cards.
 - **Enquiry management** — the existing contact-form and spec-sheet submissions, now listable/searchable/paginated with a status workflow (`New → In Progress → Contacted → Closed → Archived`) and delete.
 - **Premium, on-brand UI** — reuses the public site's exact design tokens (palette, typography, "blueprint" corner marks), not a generic admin template: responsive sidebar + mobile drawer, header with a profile menu, breadcrumbs, toast notifications, confirmation dialogs before destructive actions, and loading/empty/error states throughout.
 - Fully code-split from the public bundle (`React.lazy`) — visiting `/` never downloads the admin JS/CSS.
@@ -179,6 +180,12 @@ All responses use `{ success: true, data }` or `{ success: false, message, error
 | PUT    | `/api/people/:id`           | Admin       | Update a person |
 | PUT    | `/api/people/:id/reorder`   | Admin       | Swap `order` with the previous/next person — `{ direction: "up" \| "down" }` |
 | DELETE | `/api/people/:id`           | Admin       | Delete permanently |
+| GET    | `/api/cone-library`         | Public      | List Cone library products in display order (never cached) |
+| GET    | `/api/cone-library/:id`     | Admin       | Get one product |
+| POST   | `/api/cone-library`         | Admin       | Create a product — `{ image, productName, productDetails }`, all required |
+| PUT    | `/api/cone-library/:id`     | Admin       | Update a product (a sent field can't be blanked) |
+| PUT    | `/api/cone-library/:id/reorder` | Admin   | Move a product one place — `{ direction: "up" | "down" }` |
+| DELETE | `/api/cone-library/:id`     | Admin       | Delete permanently |
 | POST   | `/api/uploads`              | Admin       | Upload one image file (multipart `image` field, JPEG/PNG/WEBP/GIF, max 5MB) — returns `{ url, filename }` |
 | DELETE | `/api/uploads/:filename`    | Admin       | Delete a previously-uploaded file from local storage |
 | POST   | `/api/enquiries`            | Public      | Create a contact or spec-sheet-request submission (rate-limited, validated) — response shape: `{ message, id }` / `{ error }` |

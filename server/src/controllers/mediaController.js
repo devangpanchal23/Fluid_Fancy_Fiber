@@ -3,6 +3,7 @@ import Product from "../models/Product.js";
 import Variant from "../models/Variant.js";
 import Category from "../models/Category.js";
 import Person from "../models/Person.js";
+import ConeProduct from "../models/ConeProduct.js";
 import { saveImage, deleteImage } from "../utils/imageStorage.js";
 
 export async function listMedia(req, res, next) {
@@ -67,14 +68,15 @@ async function findUsage(media) {
   const byRef = { $or: [{ "images.media": media._id }, { "images.url": media.url }] };
   const byRefSingle = { $or: [{ "image.media": media._id }, { "image.url": media.url }] };
 
-  const [products, variants, categories, people] = await Promise.all([
+  const [products, variants, categories, people, coneProducts] = await Promise.all([
     Product.find(byRef, { name: 1 }),
     Variant.find(byRef, { name: 1 }),
     Category.find(byRefSingle, { name: 1 }),
-    Person.find(byRefSingle, { name: 1 })
+    Person.find(byRefSingle, { name: 1 }),
+    ConeProduct.find(byRefSingle, { productName: 1 })
   ]);
 
-  return { products, variants, categories, people };
+  return { products, variants, categories, people, coneProducts };
 }
 
 function describeUsage(usage) {
@@ -83,6 +85,7 @@ function describeUsage(usage) {
   if (usage.variants.length) parts.push(`${usage.variants.length} variant(s)`);
   if (usage.categories.length) parts.push(`${usage.categories.length} categor${usage.categories.length === 1 ? "y" : "ies"}`);
   if (usage.people.length) parts.push(`${usage.people.length} people entr${usage.people.length === 1 ? "y" : "ies"}`);
+  if (usage.coneProducts.length) parts.push(`${usage.coneProducts.length} cone library product(s)`);
   return parts.join(", ");
 }
 
@@ -95,7 +98,8 @@ async function removeFromAllUses(media) {
     Product.updateMany(byRef, { $pull: { images: pullMatch } }),
     Variant.updateMany(byRef, { $pull: { images: pullMatch } }),
     Category.updateMany(byRefSingle, { $set: { image: null } }),
-    Person.updateMany(byRefSingle, { $set: { image: null } })
+    Person.updateMany(byRefSingle, { $set: { image: null } }),
+    ConeProduct.updateMany(byRefSingle, { $set: { image: null } })
   ]);
 }
 
@@ -105,7 +109,7 @@ export async function deleteMedia(req, res, next) {
     if (!media) return res.status(404).json({ success: false, message: "Media item not found." });
 
     const usage = await findUsage(media);
-    const inUse = usage.products.length + usage.variants.length + usage.categories.length + usage.people.length > 0;
+    const inUse = usage.products.length + usage.variants.length + usage.categories.length + usage.people.length + usage.coneProducts.length > 0;
 
     if (inUse && req.query.force !== "true") {
       return res.status(409).json({
@@ -116,7 +120,8 @@ export async function deleteMedia(req, res, next) {
             products: usage.products.map((p) => ({ id: p._id, name: p.name })),
             variants: usage.variants.map((v) => ({ id: v._id, name: v.name })),
             categories: usage.categories.map((c) => ({ id: c._id, name: c.name })),
-            people: usage.people.map((p) => ({ id: p._id, name: p.name }))
+            people: usage.people.map((p) => ({ id: p._id, name: p.name })),
+            coneProducts: usage.coneProducts.map((c) => ({ id: c._id, name: c.productName }))
           }
         }
       });

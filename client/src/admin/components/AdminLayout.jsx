@@ -10,6 +10,7 @@ const LABELS = {
   new: "New",
   edit: "Edit",
   categories: "Categories",
+  "cone-library": "Cone library",
   enquiries: "Enquiries",
   settings: "Settings"
 };

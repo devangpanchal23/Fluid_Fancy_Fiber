@@ -24,7 +24,7 @@ export async function login(req, res, next) {
 
     const admin = await Admin.findOne({ email: String(email).trim().toLowerCase() });
     if (!admin) {
-      return res.status(401).json({ success: false, message: "Invalid email or password." });
+      return res.status(401).json({ success: false, message: "Email is incorrect. Please try again later." });
     }
 
     if (admin.isLocked()) {
@@ -40,7 +40,7 @@ export async function login(req, res, next) {
         admin.loginAttempts = 0;
       }
       await admin.save();
-      return res.status(401).json({ success: false, message: "Invalid email or password." });
+      return res.status(401).json({ success: false, message: "Password was incorrect. Please try again later." });
     }
 
     admin.loginAttempts = 0;

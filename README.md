@@ -255,7 +255,7 @@ Without this configured, the admin video uploader shows a clear inline error rat
 | `CLIENT_ORIGIN`  | Allowed CORS origin (the deployed frontend URL) | `http://localhost:5173`                          |
 | `JWT_SECRET`     | Signs admin session tokens — must be a long random string, never reused/guessable | generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `NODE_ENV`       | `production` makes the session cookie `secure` (HTTPS-only) | `development` locally, `production` on Vercel |
-| `ADMIN_EMAIL`    | Used only by `npm run seed:admin` to create/update the admin account | `admin@example.com` |
+| `ADMIN_EMAIL`    | Used only by `npm run seed:admin` to create/update the admin account (default `admin@gmail.com`) | `admin@gmail.com` |
 | `ADMIN_PASSWORD` | Used only by `npm run seed:admin`. **Quote it** if it contains `#` or other special characters — dotenv treats an unquoted `#` as a comment and silently truncates the value | `"a-strong-password-#123"` |
 | `ADMIN_NAME`     | Optional display name for the seeded admin     | `Admin` |
 | `EMAIL_USER`     | Gmail address used to send contact-form/spec-sheet notifications (optional — see [Email Notifications](#email-notifications)) | `you@gmail.com` |
@@ -284,14 +284,16 @@ Edit `server/.env` and set `MONGODB_URI` to a local MongoDB instance or a MongoD
 
 ## Admin Setup
 
-The admin account isn't created by signing up — it's seeded from environment variables. With `server/.env` configured (`MONGODB_URI`, and `ADMIN_EMAIL`/`ADMIN_PASSWORD` set):
+The admin account isn't created by signing up — it's seeded by a script. The default login is **`admin@gmail.com` / `admin123`**; set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `server/.env` to override it. With `MONGODB_URI` configured:
 
 ```bash
 cd server
 npm run seed:admin
 ```
 
-Re-running it is safe — it updates the password of the existing account instead of creating a duplicate. Then log in at `http://localhost:5173/admin` (or your deployed domain + `/admin`) with those credentials.
+To apply it to the live site, run the same command with `MONGODB_URI` pointing at the production database (e.g. `MONGODB_URI="<production uri>" npm run seed:admin`).
+
+Re-running it is safe — it updates the existing account (including its email, if that changed) instead of creating a duplicate. Then log in at `http://localhost:5173/admin` (or your deployed domain + `/admin`) with those credentials.
 
 ### Migrating the existing catalogue into MongoDB
 

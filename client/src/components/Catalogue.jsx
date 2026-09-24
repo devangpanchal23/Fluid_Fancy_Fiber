@@ -169,6 +169,19 @@ export default function Catalogue({ onOpenModal }) {
     setGalleryIndex(0);
   }
 
+  // Same gallery-resolution rules as the desktop side panel (utils/catalogueImage),
+  // but per-line so each accordion row's inline mobile image tracks whichever
+  // variant is open within THAT row — independent of which line is "active".
+  function galleryFor(line, isActiveLine) {
+    const variant = isActiveLine ? activeVariant : null;
+    const g = dynamic
+      ? resolveGallery(variant, line, categoryFor(line))
+      : line.gallery?.length
+        ? line.gallery
+        : [line.image];
+    return g.length ? g : [dynamic ? DEFAULT_IMAGE : line.image];
+  }
+
   return (
     <section id="catalogue" className="ff-section">
       <div className="ff-container">
@@ -203,6 +216,9 @@ export default function Catalogue({ onOpenModal }) {
             {lines.map((line, i) => {
               const isOpen = open === i;
               const isActive = activeIndex === i;
+              const lineGallery = galleryFor(line, isActive);
+              const lineGalleryIndex = isActive ? Math.min(galleryIndex, lineGallery.length - 1) : 0;
+              const lineImage = lineGallery[lineGalleryIndex] || (dynamic ? DEFAULT_IMAGE : line.image);
               return (
                 <div key={line.id} className={`ff-line${isOpen ? " is-open" : ""}${isActive ? " is-active" : ""}`}>
                   <button
@@ -230,6 +246,27 @@ export default function Catalogue({ onOpenModal }) {
                   <div className="ff-line-panel">
                     <div className="ff-line-panel-inner">
                       <div className="ff-line-panel-content">
+                        {/* Mobile/tablet only (hidden ≥900px, where the sticky side
+                            panel already shows this) — the desktop preview is a
+                            hover target, but touch has no hover, so each row carries
+                            its own image inline instead and reveals it, with a
+                            fade/slide, when the accordion opens (tap-to-expand). */}
+                        <figure className="ff-line-mobile-preview">
+                          <CatalogueImage key={lineImage} src={lineImage} alt={`${line.name} sample`} />
+                          {isActive && lineGallery.length > 1 && (
+                            <div className="ff-line-mobile-dots">
+                              {lineGallery.map((img, gi) => (
+                                <button
+                                  key={`${img}-${gi}`}
+                                  type="button"
+                                  className={`ff-preview-dot${galleryIndex === gi ? " is-active" : ""}`}
+                                  aria-label={`View image ${gi + 1}`}
+                                  onClick={() => setGalleryIndex(gi)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </figure>
                         <p>{line.body}</p>
 
                         {dynamic ? (

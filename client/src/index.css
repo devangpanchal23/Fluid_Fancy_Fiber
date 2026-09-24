@@ -1035,6 +1035,76 @@ textarea::placeholder {
   background: rgba(140, 124, 94, 0.16);
 }
 
+/* Inline per-row image, mobile/tablet only — the sticky .ff-preview panel
+   (below) takes over at 900px+, where hover can drive it instead. Collapses
+   to nothing while its row is closed (.ff-line-panel is display:grid with
+   grid-template-rows:0fr), then fades/slides in as the row opens — the
+   touch-friendly stand-in for the desktop hover reveal. */
+.ff-line-mobile-preview {
+  grid-column: 1 / -1;
+  position: relative;
+  margin: 0 0 6px;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--ff-line-strong);
+  overflow: hidden;
+  background: #e6dfd0;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 420ms var(--ease-out), transform 460ms var(--ease-out);
+}
+.ff-line.is-open .ff-line-mobile-preview {
+  opacity: 1;
+  transform: none;
+  transition-delay: 90ms;
+}
+.ff-line-mobile-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.5) sepia(0.14) contrast(1.03);
+}
+.ff-line-mobile-dots {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(244, 240, 232, 0.85);
+  backdrop-filter: blur(2px);
+}
+/* Same visible dot as the desktop .ff-preview-dots, but with a bigger
+   invisible hit area — 9px is a mouse-precision target, not a thumb one. */
+.ff-line-mobile-dots .ff-preview-dot {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+}
+.ff-line-mobile-dots .ff-preview-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--ff-line-strong);
+  background: var(--ff-bg);
+}
+.ff-line-mobile-dots .ff-preview-dot.is-active::after {
+  background: var(--ff-accent);
+  border-color: var(--ff-accent);
+}
+@media (min-width: 900px) {
+  .ff-line-mobile-preview {
+    display: none;
+  }
+}
+
 .ff-variant-list {
   border-top: 1px solid var(--ff-line-soft);
   grid-column: 1 / -1;

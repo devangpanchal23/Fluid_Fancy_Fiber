@@ -4,7 +4,7 @@ import { app } from "./app.js";
 import { connectDB, isDbConnected } from "./config/db.js";
 import { ensurePortAvailable } from "./utils/portHelper.js";
 
-const PORT = Number(process.env.PORT) || 5000;
+const PORT = Number(process.env.PORT) || 5001;
 
 // Permanent Crash Protection: Prevent uncaught exceptions/rejections from killing the process
 process.on("uncaughtException", (err) => {

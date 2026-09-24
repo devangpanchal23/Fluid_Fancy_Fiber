@@ -242,7 +242,7 @@ Without this configured, the admin video uploader shows a clear inline error rat
 
 | Variable         | Description                                  | Example                        |
 |------------------|-----------------------------------------------|---------------------------------|
-| `VITE_API_URL`   | Base URL of the backend API                  | `http://localhost:5000/api`    |
+| `VITE_API_URL`   | Base URL of the backend API                  | `http://localhost:5001/api`    |
 | `VITE_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name, for direct browser video uploads (see [Video Gallery](#video-gallery)) | `your-cloud-name` |
 | `VITE_CLOUDINARY_UPLOAD_PRESET` | An *unsigned* Cloudinary upload preset name (create it in the Cloudinary dashboard) | `fluid-fibers-videos` |
 
@@ -250,7 +250,7 @@ Without this configured, the admin video uploader shows a clear inline error rat
 
 | Variable         | Description                                  | Example                                          |
 |------------------|-----------------------------------------------|----------------------------------------------------|
-| `PORT`           | Port the Express server listens on            | `5000`                                             |
+| `PORT`           | Port the Express server listens on            | `5001`                                             |
 | `MONGODB_URI`    | MongoDB connection string                     | `mongodb://127.0.0.1:27017/fluid_fibers`           |
 | `CLIENT_ORIGIN`  | Allowed CORS origin (the deployed frontend URL) | `http://localhost:5173`                          |
 | `JWT_SECRET`     | Signs admin session tokens — must be a long random string, never reused/guessable | generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
@@ -315,7 +315,7 @@ npm run dev
 ```
 
 - Client: http://localhost:5173
-- Server: http://localhost:5000 (health check at `/api/health`)
+- Server: http://localhost:5001 (health check at `/api/health`)
 
 Or run them independently:
 

@@ -16,7 +16,20 @@ import { requestLogger } from "./middleware/requestLogger.js";
 import { connectDB, isDbConnected } from "./config/db.js";
 import { serveImage } from "./controllers/uploadController.js";
 
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+const configuredOrigins = (process.env.CLIENT_ORIGIN || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const allowedOrigins = new Set([
+  ...configuredOrigins,
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000"
+]);
 
 export const app = express();
 
@@ -25,8 +38,23 @@ export const app = express();
 app.set("trust proxy", 1);
 
 // credentials: true is required so the browser sends/receives the admin
-// session cookie across origins in local dev (client :5173, server :5000).
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+// session cookie across origins in local dev (client :5173, server :5001).
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // allow requests with no origin (like mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.has(origin) ||
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
+    credentials: true
+  })
+);
 app.use(requestLogger);
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());

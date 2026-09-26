@@ -1,16 +1,7 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
-import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useWebglGate } from "./useWebglGate";
 
 const FiberScene = lazy(() => import("./FiberScene"));
-
-function supportsWebGL() {
-  try {
-    const canvas = document.createElement("canvas");
-    return !!(window.WebGLRenderingContext && (canvas.getContext("webgl2") || canvas.getContext("webgl")));
-  } catch {
-    return false;
-  }
-}
 
 // Three.js/R3F can throw on driver quirks, context loss, or an exhausted
 // GPU — this must never take the Hero (or the rest of the page) down with
@@ -58,34 +49,15 @@ function useLocalScrollProgress(ref) {
   return progress;
 }
 
-// Gates the heavy Three.js/R3F bundle behind real capability checks so it is
-// never even downloaded for reduced-motion users, no-WebGL browsers, or
-// data-saver connections — code-splitting that actually skips the fetch,
-// not just the render.
+// Gates the heavy Three.js/R3F bundle behind real capability checks (see
+// useWebglGate, shared with MaterialExplorerCanvas) so it is never even
+// downloaded for reduced-motion users, no-WebGL browsers, or data-saver
+// connections — code-splitting that actually skips the fetch, not just the
+// render.
 export default function HeroCanvas({ className = "" }) {
   const containerRef = useRef(null);
   const scrollProgress = useLocalScrollProgress(containerRef);
-
-  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
-  const isTablet = useMediaQuery("(max-width: 899.98px)");
-  const isPhone = useMediaQuery("(max-width: 720px)");
-
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    if (prefersReducedMotion) {
-      setEnabled(false);
-      return;
-    }
-    const saveData = typeof navigator !== "undefined" && navigator.connection && navigator.connection.saveData;
-    if (saveData) {
-      setEnabled(false);
-      return;
-    }
-    setEnabled(supportsWebGL());
-  }, [prefersReducedMotion]);
-
-  const quality = isPhone ? "low" : isTablet ? "medium" : "high";
+  const { enabled, quality, isPhone } = useWebglGate();
 
   const fallback = <div className="ff-hero-canvas-fallback" aria-hidden="true" />;
 

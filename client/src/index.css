@@ -223,6 +223,64 @@ textarea::placeholder {
   transform: none;
 }
 
+/* ---------- custom cursor ---------- */
+
+/* Native cursor is only hidden once CustomCursor.jsx has confirmed a fine
+   hover-capable pointer and no reduced-motion preference, and adds this
+   class itself — never hidden by default, so touch/keyboard/reduced-motion
+   users always keep their normal cursor. */
+body.ff-cursor-active,
+body.ff-cursor-active a,
+body.ff-cursor-active button {
+  cursor: none;
+}
+.ff-cursor-dot,
+.ff-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease, width 220ms var(--ease-out), height 220ms var(--ease-out),
+    background 220ms ease, border-color 220ms ease;
+}
+.ff-cursor-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--ff-ink);
+}
+.ff-cursor-ring {
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  border: 1px solid var(--ff-accent);
+}
+.ff-cursor-ring[data-state="link"],
+.ff-cursor-ring[data-state="button"] {
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  background: rgba(140, 124, 94, 0.1);
+}
+.ff-cursor-ring[data-state="image"],
+.ff-cursor-ring[data-state="product"] {
+  width: 68px;
+  height: 68px;
+  margin: -34px 0 0 -34px;
+  border-color: var(--ff-ink);
+  background: rgba(23, 20, 15, 0.06);
+}
+.ff-cursor-ring[data-state="3d"] {
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-style: dashed;
+}
+
 .ff-section-transition {
   height: 1px;
   margin: 0 var(--gutter);
@@ -1839,6 +1897,74 @@ textarea::placeholder {
   background: var(--ff-accent);
 }
 
+/* ---------- material explorer (phase 7) ---------- */
+
+.ff-material-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: clamp(30px, 5vw, 78px);
+  align-items: center;
+  max-width: var(--container);
+  margin: clamp(48px, 8vh, 96px) auto 0;
+  padding-top: clamp(40px, 6vh, 72px);
+  border-top: 1px solid var(--ff-line);
+}
+.ff-material-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(24px, 2.4vw, 36px);
+  line-height: 1.08;
+  text-transform: uppercase;
+  margin: 14px 0 0;
+}
+.ff-material-copy p {
+  margin: 16px 0 0;
+  max-width: 46ch;
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: var(--ff-body);
+  text-wrap: pretty;
+}
+.ff-material-explorer {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  border: 1px solid var(--ff-line-strong);
+  background: #e6dfd0;
+  overflow: hidden;
+  touch-action: none;
+}
+.ff-material-explorer canvas {
+  display: block;
+}
+.ff-material-explorer-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ff-muted);
+  background: radial-gradient(ellipse 60% 50% at 60% 35%, rgba(140, 124, 94, 0.22), transparent 60%);
+}
+.ff-material-explorer-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 6px 10px;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ff-muted);
+  background: rgba(244, 240, 232, 0.85);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
 /* ---------- people ---------- */
 
 .ff-people-grid {
@@ -2265,6 +2391,10 @@ textarea::placeholder {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: rgba(244, 240, 232, 0.6);
+  transition: color 220ms ease;
+}
+.ff-field:focus-within .ff-field-label {
+  color: var(--ff-accent-dark);
 }
 .ff-field input,
 .ff-field textarea {
@@ -2274,7 +2404,12 @@ textarea::placeholder {
   background: rgba(244, 240, 232, 0.05);
   border: 1px solid rgba(185, 166, 132, 0.35);
   border-radius: 0;
-  transition: border-color 220ms ease;
+  transition: border-color 220ms ease, background 220ms ease;
+}
+.ff-field:focus-within input,
+.ff-field:focus-within textarea {
+  border-color: var(--ff-accent-dark);
+  background: rgba(244, 240, 232, 0.09);
 }
 .ff-field.has-error input {
   border-color: var(--ff-error);
@@ -2329,12 +2464,27 @@ textarea::placeholder {
 
 /* ---------- footer ---------- */
 
+/* A calm ambient glow settling in at the top edge — the lightweight nod to
+   "the fiber travels into the footer" the redesign brief asks for, without
+   a second 3D scene or animation loop running in a section users spend
+   little time in. Static, so it costs nothing and needs no motion gate. */
 .ff-footer {
+  position: relative;
   background: var(--ff-bg-alt);
   border-top: 1px solid var(--ff-line);
   padding: clamp(44px, 7vh, 76px) var(--gutter) 28px;
 }
+.ff-footer::before {
+  content: "";
+  position: absolute;
+  inset: -1px 0 auto 0;
+  height: 140px;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 100% at 50% 0%, rgba(140, 124, 94, 0.12), transparent 70%);
+}
 .ff-footer-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: clamp(26px, 4vw, 60px);

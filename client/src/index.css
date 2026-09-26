@@ -1110,6 +1110,40 @@ textarea::placeholder {
   }
 }
 
+/* Medium/tablet layout state (the ~721–899.98px gap between this project's
+   own "phone" boundary, max-width:720px used elsewhere for nav/lightbox/
+   quote-banner, and its "desktop" boundary, min-width:900px, above). Below
+   this range the row is a single fluid column, so the image is capped at
+   360px to stay a comfortable phone-sized figure; above it the sticky
+   .ff-preview panel takes over entirely. In between, the accordion row has
+   real width to spend, so give the image and its details their own explicit
+   two-column split instead of letting the image span the full auto-fit row
+   width (it did — via grid-column:1/-1) while being capped far below that
+   width by the phone-sized max-width, which is what left the dead space
+   beside it. The image's own max-width is removed here: its size now comes
+   purely from the grid column track (which is itself fluid, not a fixed
+   px value) plus aspect-ratio:1/1 + object-fit:contain — never a hardcoded
+   per-breakpoint image dimension. */
+@media (min-width: 721px) and (max-width: 899.98px) {
+  .ff-line-panel-content {
+    grid-template-columns: minmax(240px, 380px) minmax(220px, 1fr);
+    align-items: start;
+  }
+  .ff-line-mobile-preview {
+    grid-column: 1 / 2;
+    max-width: none;
+    margin: 0;
+  }
+  .ff-line-panel-content > p {
+    grid-column: 2 / 3;
+    align-self: start;
+  }
+  .ff-variant-list,
+  .ff-line-static-specs {
+    grid-column: 1 / -1;
+  }
+}
+
 .ff-variant-list {
   border-top: 1px solid var(--ff-line-soft);
   grid-column: 1 / -1;

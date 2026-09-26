@@ -316,7 +316,7 @@ export default function Catalogue({ onOpenModal }) {
                             </div>
                           )
                         ) : (
-                          <div>
+                          <div className="ff-line-static-specs">
                             {line.specs.map(([k, v]) => (
                               <div className="ff-spec-row" key={k}>
                                 <span className="ff-spec-key">{k}</span>

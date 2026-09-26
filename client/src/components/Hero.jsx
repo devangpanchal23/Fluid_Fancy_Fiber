@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { images } from "../assets/images";
+import HeroCanvas from "../three/HeroCanvas";
 
 export default function Hero({ onOpenModal }) {
   const frameRef = useRef(null);
@@ -31,6 +32,7 @@ export default function Hero({ onOpenModal }) {
 
   return (
     <section id="top" className="ff-hero">
+      <HeroCanvas />
       <div className="ff-container">
         <div className="ff-hero-eyebrow">
           <span className="ff-hero-rule" />

@@ -644,9 +644,38 @@ textarea::placeholder {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   opacity: 0.5;
   background: repeating-linear-gradient(to right, rgba(140, 124, 94, 0.13) 0 1px, transparent 1px 12.5%);
+}
+.ff-hero > .ff-container {
+  position: relative;
+  z-index: 2;
+}
+
+/* The 3D fiber field (or its no-WebGL/reduced-motion fallback) sits behind
+   the hero's grid overlay and content, full-bleed, with a soft vertical mask
+   so it blends into the page background instead of reading as a hard box.
+   aria-hidden — it is ambient decoration, the hero's real content is the
+   text/CTAs/photo in .ff-container, unchanged and still fully in the DOM. */
+.ff-hero-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent, black 16%, black 82%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 16%, black 82%, transparent);
+}
+.ff-hero-canvas canvas {
+  display: block;
+}
+.ff-hero-canvas-fallback {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 72% 30%, rgba(140, 124, 94, 0.22), transparent 60%),
+    radial-gradient(ellipse 50% 45% at 20% 70%, rgba(23, 20, 15, 0.1), transparent 65%);
 }
 .ff-hero-eyebrow {
   display: flex;

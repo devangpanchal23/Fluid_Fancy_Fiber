@@ -1,14 +1,19 @@
 import { useEffect } from "react";
 
 // Applies a damped pointer-follow translate to [data-magnetic] elements,
-// skipped for touch pointers and reduced-motion users.
+// skipped for touch pointers and reduced-motion users. A MutationObserver
+// picks up elements that appear after mount (mobile menu links, modal/CTA
+// buttons rendered conditionally, etc.) — without it, only whatever was in
+// the initial render tree ever got the effect.
 export function useMagnetic(containerRef, deps = []) {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
     const root = containerRef?.current || document;
-    const magnets = Array.from(root.querySelectorAll("[data-magnetic]"));
 
-    const cleanups = magnets.map((el) => {
+    const seen = new WeakMap();
+
+    function bind(el) {
+      if (seen.has(el)) return;
       const onMove = (ev) => {
         if (ev.pointerType === "touch") return;
         const r = el.getBoundingClientRect();
@@ -23,13 +28,43 @@ export function useMagnetic(containerRef, deps = []) {
       };
       el.addEventListener("pointermove", onMove);
       el.addEventListener("pointerleave", onLeave);
-      return () => {
+      seen.set(el, () => {
         el.removeEventListener("pointermove", onMove);
         el.removeEventListener("pointerleave", onLeave);
-      };
-    });
+      });
+    }
 
-    return () => cleanups.forEach((fn) => fn());
+    function unbind(el) {
+      seen.get(el)?.();
+      seen.delete(el);
+    }
+
+    function bindTree(node) {
+      if (node.nodeType !== 1) return;
+      if (node.hasAttribute("data-magnetic")) bind(node);
+      node.querySelectorAll?.("[data-magnetic]").forEach(bind);
+    }
+
+    function unbindTree(node) {
+      if (node.nodeType !== 1) return;
+      if (node.hasAttribute("data-magnetic")) unbind(node);
+      node.querySelectorAll?.("[data-magnetic]").forEach(unbind);
+    }
+
+    root.querySelectorAll("[data-magnetic]").forEach(bind);
+
+    const mo = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        m.addedNodes.forEach(bindTree);
+        m.removedNodes.forEach(unbindTree);
+      });
+    });
+    mo.observe(root === document ? document.body : root, { childList: true, subtree: true });
+
+    return () => {
+      mo.disconnect();
+      root.querySelectorAll("[data-magnetic]").forEach(unbind);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }

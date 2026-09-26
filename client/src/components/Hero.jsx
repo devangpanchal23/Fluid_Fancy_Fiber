@@ -1,36 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { images } from "../assets/images";
+import HeroCanvas from "../three/HeroCanvas";
+import { useParallax } from "../hooks/useParallax";
 
 export default function Hero({ onOpenModal }) {
-  const frameRef = useRef(null);
   const imgRef = useRef(null);
 
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
-    let raf = null;
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = null;
-        const frame = frameRef.current;
-        const img = imgRef.current;
-        if (!frame || !img) return;
-        const r = frame.getBoundingClientRect();
-        const k = Math.max(-1, Math.min(1, (window.innerHeight - r.top) / (window.innerHeight + r.height)));
-        // Clamp the shift to the frame's own -8% inset buffer (see .ff-hero-frame-inner)
-        // so the enlarged image never translates far enough to expose the frame edge.
-        const maxShift = r.height * 0.08;
-        const shift = Math.max(-maxShift, Math.min(maxShift, k * -46));
-        img.style.transform = `translate3d(0, ${shift.toFixed(1)}px, 0)`;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const frameRef = useParallax((k, r) => {
+    const img = imgRef.current;
+    if (!img) return;
+    // Clamp the shift to the frame's own -8% inset buffer (see .ff-hero-frame-inner)
+    // so the enlarged image never translates far enough to expose the frame edge.
+    const maxShift = r.height * 0.08;
+    const shift = Math.max(-maxShift, Math.min(maxShift, k * -46));
+    img.style.transform = `translate3d(0, ${shift.toFixed(1)}px, 0)`;
+  });
 
   return (
     <section id="top" className="ff-hero">
+      <HeroCanvas />
       <div className="ff-container">
         <div className="ff-hero-eyebrow">
           <span className="ff-hero-rule" />

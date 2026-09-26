@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { CREDENTIALS } from "../data/content";
 import { images } from "../assets/images";
+import MaterialExplorerCanvas from "../three/MaterialExplorerCanvas";
 
 export default function Mill() {
   const wrapRef = useRef(null);
@@ -33,7 +34,7 @@ export default function Mill() {
   return (
     <section id="mill" className="ff-section">
       <div className="ff-mill-grid">
-        <div className="ff-mill-media" data-reveal="left">
+        <div className="ff-mill-media" data-reveal="mask">
           <figure className="ff-mill-frame">
             <i className="corner tl" />
             <i className="corner tr" />
@@ -72,6 +73,20 @@ export default function Mill() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="ff-container">
+        <div className="ff-material-section" data-reveal="scale">
+          <div className="ff-material-copy">
+            <div className="ff-kicker">Material</div>
+            <h3 className="ff-material-title">Every count starts as a single fibre</h3>
+            <p>
+              A rotate-able view of the same filament structure our ring frames spin from thousands of times over —
+              drag it to see how the twist holds its shape under tension.
+            </p>
+          </div>
+          <MaterialExplorerCanvas />
         </div>
       </div>
     </section>

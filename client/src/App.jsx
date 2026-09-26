@@ -18,6 +18,8 @@ import Contact from "./components/Contact";
 import Footer from "./components/Footer";
 import BackToTop from "./components/BackToTop";
 import SpecModal from "./components/SpecModal";
+import CustomCursor from "./motion/CustomCursor";
+import SectionTransition from "./motion/SectionTransition";
 import { useScrollProgress } from "./hooks/useScrollProgress";
 import { useReveal } from "./hooks/useReveal";
 import { useMagnetic } from "./hooks/useMagnetic";
@@ -38,19 +40,23 @@ export default function App() {
   return (
     <div className="ff-app">
       {loading && <Preloader onDone={() => setLoading(false)} />}
+      <CustomCursor />
 
       <div className="ff-progress" style={{ transform: `scaleX(${scroll.toFixed(4)})` }} />
 
       <Header shrink={shrink} onOpenModal={openModal} />
 
       <Hero onOpenModal={openModal} />
+      <SectionTransition variant="fiber" />
       <WhyUs />
       <Stats />
       <Ticker />
       <QuoteBanner onOpenModal={openModal} />
+      <SectionTransition />
       <Catalogue onOpenModal={openModal} />
       <Gallery />
       <VideoGallery />
+      <SectionTransition />
       <Process />
       <Mill />
       <People />

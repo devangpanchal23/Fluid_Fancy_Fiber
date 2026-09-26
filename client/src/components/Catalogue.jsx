@@ -3,6 +3,7 @@ import { LINES } from "../data/content";
 import { images } from "../assets/images";
 import { getApiBase, resolveUploadUrl } from "../apiBase";
 import { DEFAULT_IMAGE, resolveGallery } from "../utils/catalogueImage";
+import { useTilt } from "../hooks/useTilt";
 import Corners from "./Corners";
 
 const API_URL = getApiBase();
@@ -117,6 +118,7 @@ function useCatalogueLines() {
 }
 
 export default function Catalogue({ onOpenModal }) {
+  const tiltRef = useTilt({ max: 7, scale: 1.02 });
   const { lines: allLines, dynamic } = useCatalogueLines();
   const categories = useCategories();
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -341,7 +343,7 @@ export default function Catalogue({ onOpenModal }) {
           </div>
 
           <div className="ff-preview">
-            <figure className="ff-preview-frame">
+            <figure ref={tiltRef} className="ff-preview-frame" data-cursor="product">
               <Corners />
               {lines.map((line, i) => {
                 const isActiveSlot = activeIndex === i;

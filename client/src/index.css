@@ -186,9 +186,147 @@ textarea::placeholder {
 [data-reveal="right"] {
   transform: translateX(42px);
 }
+[data-reveal="fade"] {
+  transform: none;
+}
+[data-reveal="scale"] {
+  transform: scale(0.94);
+}
+/* Extra motion vocabulary (PHASE 5 — "do not use the same animation for
+   every section") beyond the up/left/right/fade/scale set above. */
+[data-reveal="blur"] {
+  transform: none;
+  filter: blur(10px);
+  transition: opacity 760ms var(--ease-out), filter 900ms var(--ease-out);
+}
+[data-reveal="mask"] {
+  transform: none;
+  clip-path: inset(0 0 100% 0);
+  transition: opacity 500ms var(--ease-out), clip-path 900ms cubic-bezier(0.16, 0.9, 0.24, 1);
+}
 [data-reveal].is-visible {
   opacity: 1;
   transform: none;
+  filter: none;
+  clip-path: inset(0 0 0 0);
+}
+
+/* ---------- motion/ primitives (Reveal, HoverLift, TextReveal, SectionTransition) ---------- */
+
+.ff-hover-lift {
+  transition: transform 340ms var(--ease-out), box-shadow 340ms var(--ease-out);
+}
+.ff-hover-lift:hover,
+.ff-hover-lift:focus-within {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 34px -20px rgba(23, 20, 15, 0.35);
+}
+
+.ff-text-reveal-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+.ff-text-reveal-word {
+  display: inline-block;
+  transform: translateY(110%);
+  transition: transform 700ms var(--ease-out);
+  will-change: transform;
+}
+.ff-text-reveal-word.is-visible {
+  transform: none;
+}
+
+/* ---------- custom cursor ---------- */
+
+/* Native cursor is only hidden once CustomCursor.jsx has confirmed a fine
+   hover-capable pointer and no reduced-motion preference, and adds this
+   class itself — never hidden by default, so touch/keyboard/reduced-motion
+   users always keep their normal cursor. */
+body.ff-cursor-active,
+body.ff-cursor-active a,
+body.ff-cursor-active button {
+  cursor: none;
+}
+.ff-cursor-dot,
+.ff-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease, width 220ms var(--ease-out), height 220ms var(--ease-out),
+    background 220ms ease, border-color 220ms ease;
+}
+.ff-cursor-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--ff-ink);
+}
+.ff-cursor-ring {
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  border: 1px solid var(--ff-accent);
+}
+.ff-cursor-ring[data-state="link"],
+.ff-cursor-ring[data-state="button"] {
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  background: rgba(140, 124, 94, 0.1);
+}
+.ff-cursor-ring[data-state="image"],
+.ff-cursor-ring[data-state="product"] {
+  width: 68px;
+  height: 68px;
+  margin: -34px 0 0 -34px;
+  border-color: var(--ff-ink);
+  background: rgba(23, 20, 15, 0.06);
+}
+.ff-cursor-ring[data-state="3d"] {
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-style: dashed;
+}
+
+.ff-section-transition {
+  height: 1px;
+  margin: 0 var(--gutter);
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--ff-line-strong) 20%,
+    var(--ff-line-strong) 80%,
+    transparent
+  );
+}
+.ff-section-transition--fiber {
+  height: clamp(28px, 4vw, 40px);
+  margin: 0;
+  background: none;
+}
+.ff-fiber-transition-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ff-fiber-transition-path {
+  stroke: var(--ff-accent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.55;
+  stroke-dasharray: 620;
+  stroke-dashoffset: 620;
+  transition: stroke-dashoffset 1100ms var(--ease-out);
+}
+.ff-section-transition--fiber.is-visible .ff-fiber-transition-path {
+  stroke-dashoffset: 0;
 }
 
 /* ---------- blueprint corner marks ---------- */
@@ -447,20 +585,32 @@ textarea::placeholder {
 
 /* ---------- header / nav ---------- */
 
+/* Transparent over the hero at rest; a subtle glass surface — blur, then
+   border, then shadow — takes over once the page has scrolled past the
+   shrink threshold (tracked by useScrollProgress in App.jsx). The hero's
+   own background is the same --ff-bg tone, so "transparent" reads as part
+   of the hero rather than an empty gap. */
 .ff-header {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(244, 240, 232, 0.94);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--ff-line);
-  transition: box-shadow 320ms ease;
+  background: rgba(244, 240, 232, 0);
+  backdrop-filter: blur(0px);
+  border-bottom: 1px solid transparent;
+  box-shadow: 0 1px 24px rgba(23, 20, 15, 0);
+  transition: background-color 420ms var(--ease-out), backdrop-filter 420ms var(--ease-out),
+    border-color 420ms var(--ease-out), box-shadow 420ms var(--ease-out);
   animation: ff-in 600ms ease-out 200ms both;
 }
 .ff-header.is-shrunk {
+  background: rgba(244, 240, 232, 0.94);
+  backdrop-filter: blur(12px);
+  border-bottom-color: var(--ff-line);
   box-shadow: 0 1px 24px rgba(23, 20, 15, 0.09);
 }
 .ff-header-row {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: clamp(16px, 2vw, 34px);
@@ -543,11 +693,36 @@ textarea::placeholder {
   transform: translateY(-6.5px) rotate(-45deg);
 }
 
+/* Full-viewport overlay rather than a small dropdown panel — always in the
+   DOM (never conditionally unmounted) so open/close can transition and the
+   per-link stagger (transitionDelay set inline in Header.jsx) can replay on
+   every open, not just the first. `inert` (set in Header.jsx while closed)
+   removes it from tab order and hit-testing without needing display:none,
+   which would kill the transition. */
 .ff-mobile-menu {
-  border-top: 1px solid var(--ff-line);
+  position: fixed;
+  inset: 0;
+  /* Below .ff-header (40) so the header row — including the burger, which
+     doubles as the close control — stays visible/clickable above it; above
+     ordinary page content (nothing else on the page exceeds this). */
+  z-index: 38;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--ff-bg-alt);
-  padding: 12px var(--gutter) 26px;
-  animation: ff-up 320ms var(--ease-out) both;
+  padding: calc(104px + env(safe-area-inset-top, 0px)) var(--gutter) 26px;
+  opacity: 0;
+  visibility: hidden;
+  clip-path: inset(0 0 100% 0);
+  transition: opacity 420ms var(--ease-out), visibility 0ms 420ms, clip-path 520ms var(--ease-out);
+}
+.ff-mobile-menu.is-open {
+  opacity: 1;
+  visibility: visible;
+  clip-path: inset(0 0 0 0);
+  transition: opacity 420ms var(--ease-out), visibility 0ms, clip-path 520ms var(--ease-out);
 }
 .ff-mobile-link {
   display: flex;
@@ -556,9 +731,16 @@ textarea::placeholder {
   padding: 15px 0;
   border-bottom: 1px solid var(--ff-line-soft);
   font-family: var(--font-heading);
-  font-size: 24px;
+  font-size: clamp(26px, 8vw, 40px);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 420ms var(--ease-out), transform 480ms var(--ease-out);
+}
+.ff-mobile-menu.is-open .ff-mobile-link {
+  opacity: 1;
+  transform: none;
 }
 .ff-mobile-link-num {
   font-family: var(--font-body);
@@ -577,6 +759,13 @@ textarea::placeholder {
   background: var(--ff-ink);
   border: 0;
   cursor: pointer;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 420ms var(--ease-out), transform 480ms var(--ease-out), background 220ms ease;
+}
+.ff-mobile-menu.is-open .ff-mobile-cta {
+  opacity: 1;
+  transform: none;
 }
 
 @media (min-width: 900px) {
@@ -644,9 +833,38 @@ textarea::placeholder {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   opacity: 0.5;
   background: repeating-linear-gradient(to right, rgba(140, 124, 94, 0.13) 0 1px, transparent 1px 12.5%);
+}
+.ff-hero > .ff-container {
+  position: relative;
+  z-index: 2;
+}
+
+/* The 3D fiber field (or its no-WebGL/reduced-motion fallback) sits behind
+   the hero's grid overlay and content, full-bleed, with a soft vertical mask
+   so it blends into the page background instead of reading as a hard box.
+   aria-hidden — it is ambient decoration, the hero's real content is the
+   text/CTAs/photo in .ff-container, unchanged and still fully in the DOM. */
+.ff-hero-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent, black 16%, black 82%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 16%, black 82%, transparent);
+}
+.ff-hero-canvas canvas {
+  display: block;
+}
+.ff-hero-canvas-fallback {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 72% 30%, rgba(140, 124, 94, 0.22), transparent 60%),
+    radial-gradient(ellipse 50% 45% at 20% 70%, rgba(23, 20, 15, 0.1), transparent 65%);
 }
 .ff-hero-eyebrow {
   display: flex;
@@ -765,7 +983,11 @@ textarea::placeholder {
   border-bottom: 1px solid var(--ff-line);
 }
 .ff-stat {
-  padding: clamp(24px, 4vh, 40px) 20px clamp(22px, 3.5vh, 36px) 0;
+  padding: clamp(24px, 4vh, 40px) 20px clamp(22px, 3.5vh, 36px) 20px;
+  border-left: 1px solid transparent;
+}
+.ff-stat:not(:first-child) {
+  border-left-color: var(--ff-line);
 }
 .ff-stat-value {
   font-family: var(--font-heading);
@@ -785,6 +1007,28 @@ textarea::placeholder {
 }
 
 /* ---------- why-us cards ---------- */
+
+/* Subtle material-feel ambient background behind the section (PHASE 6 —
+   "large statement + interactive feature cards + subtle material
+   background"), not a texture image — two soft radial gradients in the
+   existing accent tone, low enough opacity to never compete with the
+   cards themselves. */
+#why {
+  position: relative;
+}
+#why::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 12% 15%, rgba(140, 124, 94, 0.07), transparent 42%),
+    radial-gradient(circle at 88% 65%, rgba(140, 124, 94, 0.05), transparent 46%);
+}
+#why > .ff-container {
+  position: relative;
+  z-index: 1;
+}
 
 .ff-why-grid {
   display: grid;
@@ -1274,6 +1518,36 @@ textarea::placeholder {
 
 /* ---------- gallery ---------- */
 
+/* PHASE 5/8 — "large background typography, slow parallax movement": a
+   faint outlined watermark word, positioned behind the section content and
+   given a slow drift via the shared Parallax component (hooks/useParallax).
+   Purely decorative (aria-hidden, no text content lost — the real heading
+   is still "Cone library" in the DOM). */
+.ff-gallery-section {
+  position: relative;
+  overflow: hidden;
+}
+.ff-gallery-section > .ff-container {
+  position: relative;
+  z-index: 1;
+}
+.ff-gallery-watermark {
+  position: absolute;
+  top: 4%;
+  right: 1%;
+  z-index: 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(80px, 15vw, 240px);
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(140, 124, 94, 0.14);
+  text-stroke: 1px rgba(140, 124, 94, 0.14);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
 /* Cone sheets are product cards with text on white, so thumbnails show the
    whole sheet (contain, never cropped) in true colour — a shade on screen has
    to match the shade in the carton. auto-fill keeps cards small even when the
@@ -1596,6 +1870,18 @@ textarea::placeholder {
   position: relative;
   padding-top: 46px;
 }
+/* Scoped with the extra .ff-process-grid ancestor so this outranks the
+   generic [data-reveal].is-visible rule (equal specificity would otherwise
+   let source order decide, and this opacity dimming must never fight the
+   reveal system's own opacity:0 -> 1 entrance). Only applies once a step
+   has already been revealed. */
+.ff-process-grid .ff-process-step.is-visible {
+  opacity: 0.72;
+  transition: opacity 380ms ease, transform 900ms cubic-bezier(0.16, 0.9, 0.24, 1);
+}
+.ff-process-grid .ff-process-step.is-active.is-visible {
+  opacity: 1;
+}
 .ff-process-dot {
   position: absolute;
   left: 0;
@@ -1604,6 +1890,12 @@ textarea::placeholder {
   height: 15px;
   border: 1px solid var(--ff-accent-dark);
   background: var(--ff-ink);
+  transition: transform 380ms var(--ease-out), background 380ms ease, box-shadow 380ms ease;
+}
+.ff-process-step.is-active .ff-process-dot {
+  background: var(--ff-accent-dark);
+  transform: scale(1.35);
+  box-shadow: 0 0 0 5px rgba(185, 166, 132, 0.18);
 }
 .ff-process-num {
   font-family: var(--font-heading);
@@ -1713,6 +2005,74 @@ textarea::placeholder {
   width: 6px;
   height: 6px;
   background: var(--ff-accent);
+}
+
+/* ---------- material explorer (phase 7) ---------- */
+
+.ff-material-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: clamp(30px, 5vw, 78px);
+  align-items: center;
+  max-width: var(--container);
+  margin: clamp(48px, 8vh, 96px) auto 0;
+  padding-top: clamp(40px, 6vh, 72px);
+  border-top: 1px solid var(--ff-line);
+}
+.ff-material-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(24px, 2.4vw, 36px);
+  line-height: 1.08;
+  text-transform: uppercase;
+  margin: 14px 0 0;
+}
+.ff-material-copy p {
+  margin: 16px 0 0;
+  max-width: 46ch;
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: var(--ff-body);
+  text-wrap: pretty;
+}
+.ff-material-explorer {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  border: 1px solid var(--ff-line-strong);
+  background: #e6dfd0;
+  overflow: hidden;
+  touch-action: none;
+}
+.ff-material-explorer canvas {
+  display: block;
+}
+.ff-material-explorer-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ff-muted);
+  background: radial-gradient(ellipse 60% 50% at 60% 35%, rgba(140, 124, 94, 0.22), transparent 60%);
+}
+.ff-material-explorer-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 6px 10px;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ff-muted);
+  background: rgba(244, 240, 232, 0.85);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
 }
 
 /* ---------- people ---------- */
@@ -1938,12 +2298,25 @@ textarea::placeholder {
   color: var(--ff-muted);
 }
 
+/* PHASE 6 — "smooth carousel, horizontal drag where appropriate": the
+   ambient auto-scroll (.ff-reviews-marquee-track's own animation) keeps
+   running independently; pointerdown/move/up in Reviews.jsx pauses it and
+   applies a static offset to .ff-reviews-marquee-offset (a separate layer
+   from the masked/clipped outer container, which is never itself
+   transformed — translating the masked container would shift the visible
+   window, not just its content). touch-action:pan-y so a vertical swipe
+   here still scrolls the page; a horizontal one still works natively. */
 .ff-reviews-marquee {
   position: relative;
   margin-top: clamp(18px, 2.4vw, 30px);
   -webkit-mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
   mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
   overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.ff-reviews-marquee.is-dragging {
+  cursor: grabbing;
 }
 .ff-reviews-marquee-track {
   display: flex;
@@ -2141,6 +2514,10 @@ textarea::placeholder {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: rgba(244, 240, 232, 0.6);
+  transition: color 220ms ease;
+}
+.ff-field:focus-within .ff-field-label {
+  color: var(--ff-accent-dark);
 }
 .ff-field input,
 .ff-field textarea {
@@ -2150,7 +2527,12 @@ textarea::placeholder {
   background: rgba(244, 240, 232, 0.05);
   border: 1px solid rgba(185, 166, 132, 0.35);
   border-radius: 0;
-  transition: border-color 220ms ease;
+  transition: border-color 220ms ease, background 220ms ease;
+}
+.ff-field:focus-within input,
+.ff-field:focus-within textarea {
+  border-color: var(--ff-accent-dark);
+  background: rgba(244, 240, 232, 0.09);
 }
 .ff-field.has-error input {
   border-color: var(--ff-error);
@@ -2205,12 +2587,27 @@ textarea::placeholder {
 
 /* ---------- footer ---------- */
 
+/* A calm ambient glow settling in at the top edge — the lightweight nod to
+   "the fiber travels into the footer" the redesign brief asks for, without
+   a second 3D scene or animation loop running in a section users spend
+   little time in. Static, so it costs nothing and needs no motion gate. */
 .ff-footer {
+  position: relative;
   background: var(--ff-bg-alt);
   border-top: 1px solid var(--ff-line);
   padding: clamp(44px, 7vh, 76px) var(--gutter) 28px;
 }
+.ff-footer::before {
+  content: "";
+  position: absolute;
+  inset: -1px 0 auto 0;
+  height: 140px;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 100% at 50% 0%, rgba(140, 124, 94, 0.12), transparent 70%);
+}
 .ff-footer-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: clamp(26px, 4vw, 60px);

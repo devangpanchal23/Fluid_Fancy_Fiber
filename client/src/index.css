@@ -595,15 +595,17 @@ body.ff-cursor-active button {
   top: 0;
   z-index: 40;
   background: rgba(244, 240, 232, 0);
+  -webkit-backdrop-filter: blur(0px);
   backdrop-filter: blur(0px);
   border-bottom: 1px solid transparent;
   box-shadow: 0 1px 24px rgba(23, 20, 15, 0);
   transition: background-color 420ms var(--ease-out), backdrop-filter 420ms var(--ease-out),
-    border-color 420ms var(--ease-out), box-shadow 420ms var(--ease-out);
+    -webkit-backdrop-filter 420ms var(--ease-out), border-color 420ms var(--ease-out), box-shadow 420ms var(--ease-out);
   animation: ff-in 600ms ease-out 200ms both;
 }
 .ff-header.is-shrunk {
   background: rgba(244, 240, 232, 0.94);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-bottom-color: var(--ff-line);
   box-shadow: 0 1px 24px rgba(23, 20, 15, 0.09);
@@ -1322,6 +1324,7 @@ body.ff-cursor-active button {
   gap: 2px;
   padding: 4px;
   background: rgba(244, 240, 232, 0.85);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 /* Same visible dot as the desktop .ff-preview-dots, but with a bigger
@@ -1658,6 +1661,7 @@ body.ff-cursor-active button {
   gap: clamp(8px, 2vw, 28px);
   padding: 64px clamp(12px, 3vw, 40px) 28px;
   background: rgba(23, 20, 15, 0.9);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   animation: ff-in 240ms ease-out both;
 }
@@ -2071,6 +2075,7 @@ body.ff-cursor-active button {
   text-transform: uppercase;
   color: var(--ff-muted);
   background: rgba(244, 240, 232, 0.85);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   pointer-events: none;
 }
@@ -2694,6 +2699,7 @@ body.ff-cursor-active button {
   place-items: center;
   padding: 20px;
   background: rgba(23, 20, 15, 0.62);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   animation: ff-in 260ms ease-out both;
 }

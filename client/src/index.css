@@ -186,9 +186,53 @@ textarea::placeholder {
 [data-reveal="right"] {
   transform: translateX(42px);
 }
+[data-reveal="fade"] {
+  transform: none;
+}
+[data-reveal="scale"] {
+  transform: scale(0.94);
+}
 [data-reveal].is-visible {
   opacity: 1;
   transform: none;
+}
+
+/* ---------- motion/ primitives (Reveal, HoverLift, TextReveal, SectionTransition) ---------- */
+
+.ff-hover-lift {
+  transition: transform 340ms var(--ease-out), box-shadow 340ms var(--ease-out);
+}
+.ff-hover-lift:hover,
+.ff-hover-lift:focus-within {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 34px -20px rgba(23, 20, 15, 0.35);
+}
+
+.ff-text-reveal-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+.ff-text-reveal-word {
+  display: inline-block;
+  transform: translateY(110%);
+  transition: transform 700ms var(--ease-out);
+  will-change: transform;
+}
+.ff-text-reveal-word.is-visible {
+  transform: none;
+}
+
+.ff-section-transition {
+  height: 1px;
+  margin: 0 var(--gutter);
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--ff-line-strong) 20%,
+    var(--ff-line-strong) 80%,
+    transparent
+  );
 }
 
 /* ---------- blueprint corner marks ---------- */
@@ -447,20 +491,32 @@ textarea::placeholder {
 
 /* ---------- header / nav ---------- */
 
+/* Transparent over the hero at rest; a subtle glass surface — blur, then
+   border, then shadow — takes over once the page has scrolled past the
+   shrink threshold (tracked by useScrollProgress in App.jsx). The hero's
+   own background is the same --ff-bg tone, so "transparent" reads as part
+   of the hero rather than an empty gap. */
 .ff-header {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(244, 240, 232, 0.94);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--ff-line);
-  transition: box-shadow 320ms ease;
+  background: rgba(244, 240, 232, 0);
+  backdrop-filter: blur(0px);
+  border-bottom: 1px solid transparent;
+  box-shadow: 0 1px 24px rgba(23, 20, 15, 0);
+  transition: background-color 420ms var(--ease-out), backdrop-filter 420ms var(--ease-out),
+    border-color 420ms var(--ease-out), box-shadow 420ms var(--ease-out);
   animation: ff-in 600ms ease-out 200ms both;
 }
 .ff-header.is-shrunk {
+  background: rgba(244, 240, 232, 0.94);
+  backdrop-filter: blur(12px);
+  border-bottom-color: var(--ff-line);
   box-shadow: 0 1px 24px rgba(23, 20, 15, 0.09);
 }
 .ff-header-row {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: clamp(16px, 2vw, 34px);
@@ -543,11 +599,36 @@ textarea::placeholder {
   transform: translateY(-6.5px) rotate(-45deg);
 }
 
+/* Full-viewport overlay rather than a small dropdown panel — always in the
+   DOM (never conditionally unmounted) so open/close can transition and the
+   per-link stagger (transitionDelay set inline in Header.jsx) can replay on
+   every open, not just the first. `inert` (set in Header.jsx while closed)
+   removes it from tab order and hit-testing without needing display:none,
+   which would kill the transition. */
 .ff-mobile-menu {
-  border-top: 1px solid var(--ff-line);
+  position: fixed;
+  inset: 0;
+  /* Below .ff-header (40) so the header row — including the burger, which
+     doubles as the close control — stays visible/clickable above it; above
+     ordinary page content (nothing else on the page exceeds this). */
+  z-index: 38;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--ff-bg-alt);
-  padding: 12px var(--gutter) 26px;
-  animation: ff-up 320ms var(--ease-out) both;
+  padding: calc(104px + env(safe-area-inset-top, 0px)) var(--gutter) 26px;
+  opacity: 0;
+  visibility: hidden;
+  clip-path: inset(0 0 100% 0);
+  transition: opacity 420ms var(--ease-out), visibility 0ms 420ms, clip-path 520ms var(--ease-out);
+}
+.ff-mobile-menu.is-open {
+  opacity: 1;
+  visibility: visible;
+  clip-path: inset(0 0 0 0);
+  transition: opacity 420ms var(--ease-out), visibility 0ms, clip-path 520ms var(--ease-out);
 }
 .ff-mobile-link {
   display: flex;
@@ -556,9 +637,16 @@ textarea::placeholder {
   padding: 15px 0;
   border-bottom: 1px solid var(--ff-line-soft);
   font-family: var(--font-heading);
-  font-size: 24px;
+  font-size: clamp(26px, 8vw, 40px);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 420ms var(--ease-out), transform 480ms var(--ease-out);
+}
+.ff-mobile-menu.is-open .ff-mobile-link {
+  opacity: 1;
+  transform: none;
 }
 .ff-mobile-link-num {
   font-family: var(--font-body);
@@ -577,6 +665,13 @@ textarea::placeholder {
   background: var(--ff-ink);
   border: 0;
   cursor: pointer;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 420ms var(--ease-out), transform 480ms var(--ease-out), background 220ms ease;
+}
+.ff-mobile-menu.is-open .ff-mobile-cta {
+  opacity: 1;
+  transform: none;
 }
 
 @media (min-width: 900px) {

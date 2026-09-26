@@ -10,8 +10,13 @@ const QUALITY_PRESETS = {
 
 // Slowly, continuously rotates the whole fiber bundle, adds a damped tilt
 // toward the pointer (mouse/touch position, skipped on touch pointers), and
-// a very small offset from page scroll — never scroll-jacked, just a subtle
-// drift so the hero feels connected to the rest of the page.
+// a scroll-tied drift — never scroll-jacked (this is a passive readout of
+// scroll position, not something that captures/redirects the scroll
+// gesture), just enough that the fiber visibly repositions and recedes as
+// the user scrolls past the hero rather than merely fading out where it
+// stands (PHASE 5 — "the fiber should not simply disappear"). Works
+// together with .ff-hero-canvas's own CSS mask (index.css), which already
+// fades the whole canvas out toward the bottom of the hero.
 function FiberGroup({ scrollProgress, children }) {
   const group = useRef(null);
   const target = useRef({ x: 0, y: 0 });
@@ -24,9 +29,18 @@ function FiberGroup({ scrollProgress, children }) {
     target.current.x = pointer.y * 0.18;
     target.current.y = pointer.x * 0.28;
 
+    // scrollProgress runs roughly -1 (hero below viewport) .. 0 (centered)
+    // .. 1 (scrolled past); only the positive half (scrolling further down)
+    // drives the exit drift, so the fiber stays put while the hero is still
+    // being scrolled into view from below.
+    const exit = Math.max(0, scrollProgress);
+
     g.rotation.x += (target.current.x - g.rotation.x) * Math.min(1, delta * 2.2);
     g.rotation.y += (target.current.y + state.clock.elapsedTime * 0.045 - g.rotation.y) * Math.min(1, delta * 2.2);
-    g.rotation.z = scrollProgress * 0.12;
+    g.rotation.z = scrollProgress * 0.12 + exit * 0.5;
+    g.position.y = -exit * 2.1;
+    const scale = 1 - exit * 0.28;
+    g.scale.setScalar(scale);
   });
 
   return <group ref={group}>{children}</group>;

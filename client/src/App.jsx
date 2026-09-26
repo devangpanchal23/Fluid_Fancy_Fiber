@@ -47,7 +47,7 @@ export default function App() {
       <Header shrink={shrink} onOpenModal={openModal} />
 
       <Hero onOpenModal={openModal} />
-      <SectionTransition />
+      <SectionTransition variant="fiber" />
       <WhyUs />
       <Stats />
       <Ticker />

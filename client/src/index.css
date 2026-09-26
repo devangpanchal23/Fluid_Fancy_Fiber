@@ -192,9 +192,23 @@ textarea::placeholder {
 [data-reveal="scale"] {
   transform: scale(0.94);
 }
+/* Extra motion vocabulary (PHASE 5 — "do not use the same animation for
+   every section") beyond the up/left/right/fade/scale set above. */
+[data-reveal="blur"] {
+  transform: none;
+  filter: blur(10px);
+  transition: opacity 760ms var(--ease-out), filter 900ms var(--ease-out);
+}
+[data-reveal="mask"] {
+  transform: none;
+  clip-path: inset(0 0 100% 0);
+  transition: opacity 500ms var(--ease-out), clip-path 900ms cubic-bezier(0.16, 0.9, 0.24, 1);
+}
 [data-reveal].is-visible {
   opacity: 1;
   transform: none;
+  filter: none;
+  clip-path: inset(0 0 0 0);
 }
 
 /* ---------- motion/ primitives (Reveal, HoverLift, TextReveal, SectionTransition) ---------- */
@@ -291,6 +305,28 @@ body.ff-cursor-active button {
     var(--ff-line-strong) 80%,
     transparent
   );
+}
+.ff-section-transition--fiber {
+  height: clamp(28px, 4vw, 40px);
+  margin: 0;
+  background: none;
+}
+.ff-fiber-transition-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ff-fiber-transition-path {
+  stroke: var(--ff-accent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.55;
+  stroke-dasharray: 620;
+  stroke-dashoffset: 620;
+  transition: stroke-dashoffset 1100ms var(--ease-out);
+}
+.ff-section-transition--fiber.is-visible .ff-fiber-transition-path {
+  stroke-dashoffset: 0;
 }
 
 /* ---------- blueprint corner marks ---------- */
@@ -947,7 +983,11 @@ body.ff-cursor-active button {
   border-bottom: 1px solid var(--ff-line);
 }
 .ff-stat {
-  padding: clamp(24px, 4vh, 40px) 20px clamp(22px, 3.5vh, 36px) 0;
+  padding: clamp(24px, 4vh, 40px) 20px clamp(22px, 3.5vh, 36px) 20px;
+  border-left: 1px solid transparent;
+}
+.ff-stat:not(:first-child) {
+  border-left-color: var(--ff-line);
 }
 .ff-stat-value {
   font-family: var(--font-heading);
@@ -967,6 +1007,28 @@ body.ff-cursor-active button {
 }
 
 /* ---------- why-us cards ---------- */
+
+/* Subtle material-feel ambient background behind the section (PHASE 6 —
+   "large statement + interactive feature cards + subtle material
+   background"), not a texture image — two soft radial gradients in the
+   existing accent tone, low enough opacity to never compete with the
+   cards themselves. */
+#why {
+  position: relative;
+}
+#why::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 12% 15%, rgba(140, 124, 94, 0.07), transparent 42%),
+    radial-gradient(circle at 88% 65%, rgba(140, 124, 94, 0.05), transparent 46%);
+}
+#why > .ff-container {
+  position: relative;
+  z-index: 1;
+}
 
 .ff-why-grid {
   display: grid;
@@ -1456,6 +1518,36 @@ body.ff-cursor-active button {
 
 /* ---------- gallery ---------- */
 
+/* PHASE 5/8 — "large background typography, slow parallax movement": a
+   faint outlined watermark word, positioned behind the section content and
+   given a slow drift via the shared Parallax component (hooks/useParallax).
+   Purely decorative (aria-hidden, no text content lost — the real heading
+   is still "Cone library" in the DOM). */
+.ff-gallery-section {
+  position: relative;
+  overflow: hidden;
+}
+.ff-gallery-section > .ff-container {
+  position: relative;
+  z-index: 1;
+}
+.ff-gallery-watermark {
+  position: absolute;
+  top: 4%;
+  right: 1%;
+  z-index: 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(80px, 15vw, 240px);
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(140, 124, 94, 0.14);
+  text-stroke: 1px rgba(140, 124, 94, 0.14);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
 /* Cone sheets are product cards with text on white, so thumbnails show the
    whole sheet (contain, never cropped) in true colour — a shade on screen has
    to match the shade in the carton. auto-fill keeps cards small even when the
@@ -1778,6 +1870,18 @@ body.ff-cursor-active button {
   position: relative;
   padding-top: 46px;
 }
+/* Scoped with the extra .ff-process-grid ancestor so this outranks the
+   generic [data-reveal].is-visible rule (equal specificity would otherwise
+   let source order decide, and this opacity dimming must never fight the
+   reveal system's own opacity:0 -> 1 entrance). Only applies once a step
+   has already been revealed. */
+.ff-process-grid .ff-process-step.is-visible {
+  opacity: 0.72;
+  transition: opacity 380ms ease, transform 900ms cubic-bezier(0.16, 0.9, 0.24, 1);
+}
+.ff-process-grid .ff-process-step.is-active.is-visible {
+  opacity: 1;
+}
 .ff-process-dot {
   position: absolute;
   left: 0;
@@ -1786,6 +1890,12 @@ body.ff-cursor-active button {
   height: 15px;
   border: 1px solid var(--ff-accent-dark);
   background: var(--ff-ink);
+  transition: transform 380ms var(--ease-out), background 380ms ease, box-shadow 380ms ease;
+}
+.ff-process-step.is-active .ff-process-dot {
+  background: var(--ff-accent-dark);
+  transform: scale(1.35);
+  box-shadow: 0 0 0 5px rgba(185, 166, 132, 0.18);
 }
 .ff-process-num {
   font-family: var(--font-heading);
@@ -2188,12 +2298,25 @@ body.ff-cursor-active button {
   color: var(--ff-muted);
 }
 
+/* PHASE 6 — "smooth carousel, horizontal drag where appropriate": the
+   ambient auto-scroll (.ff-reviews-marquee-track's own animation) keeps
+   running independently; pointerdown/move/up in Reviews.jsx pauses it and
+   applies a static offset to .ff-reviews-marquee-offset (a separate layer
+   from the masked/clipped outer container, which is never itself
+   transformed — translating the masked container would shift the visible
+   window, not just its content). touch-action:pan-y so a vertical swipe
+   here still scrolls the page; a horizontal one still works natively. */
 .ff-reviews-marquee {
   position: relative;
   margin-top: clamp(18px, 2.4vw, 30px);
   -webkit-mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
   mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
   overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.ff-reviews-marquee.is-dragging {
+  cursor: grabbing;
 }
 .ff-reviews-marquee-track {
   display: flex;

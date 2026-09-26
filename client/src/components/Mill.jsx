@@ -34,7 +34,7 @@ export default function Mill() {
   return (
     <section id="mill" className="ff-section">
       <div className="ff-mill-grid">
-        <div className="ff-mill-media" data-reveal="left">
+        <div className="ff-mill-media" data-reveal="mask">
           <figure className="ff-mill-frame">
             <i className="corner tl" />
             <i className="corner tr" />

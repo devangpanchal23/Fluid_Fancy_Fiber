@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { images as bundledImages } from "../assets/images";
 import { getApiBase, resolveUploadUrl } from "../apiBase";
+import Parallax from "../motion/Parallax";
 
 const API_URL = getApiBase();
 
@@ -150,9 +151,12 @@ export default function Gallery() {
   }, []);
 
   return (
-    <section id="gallery" className="ff-section ff-section--tight-top">
+    <section id="gallery" className="ff-section ff-section--tight-top ff-gallery-section">
+      <Parallax as="span" strength={24} className="ff-gallery-watermark" aria-hidden="true">
+        FIBRE
+      </Parallax>
       <div className="ff-container">
-        <div className="ff-section-head" data-reveal="up" style={{ paddingBottom: 18, borderBottom: "1px solid var(--ff-line)" }}>
+        <div className="ff-section-head" data-reveal="mask" style={{ paddingBottom: 18, borderBottom: "1px solid var(--ff-line)" }}>
           <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(22px, 2.2vw, 32px)", margin: 0, textTransform: "uppercase", letterSpacing: "0.02em" }}>
             Cone library
           </h3>

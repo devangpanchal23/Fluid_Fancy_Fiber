@@ -1,8 +1,36 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STEPS } from "../data/content";
+
+// PHASE 6 — "as the user scrolls, the current step becomes active": tracks
+// which step card is nearest the vertical center of the viewport (the
+// step whose top has most recently crossed the midline), independent of
+// the existing scroll-tied fill-line effect below.
+function useActiveStep(count) {
+  const [active, setActive] = useState(0);
+  const refs = useRef([]);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const i = refs.current.indexOf(entry.target);
+          if (i !== -1) setActive(i);
+        });
+      },
+      { rootMargin: "-45% 0px -45% 0px" }
+    );
+    refs.current.slice(0, count).forEach((el) => el && io.observe(el));
+    return () => io.disconnect();
+  }, [count]);
+
+  return { active, refs };
+}
 
 export default function Process() {
   const lineRef = useRef(null);
+  const { active, refs: stepRefs } = useActiveStep(STEPS.length);
 
   useEffect(() => {
     let raf = null;
@@ -40,8 +68,13 @@ export default function Process() {
           <div className="ff-process-line-bg" />
           <div ref={lineRef} className="ff-process-line-fill" />
           <div className="ff-process-grid">
-            {STEPS.map((step) => (
-              <div key={step.num} className="ff-process-step" data-reveal="up">
+            {STEPS.map((step, i) => (
+              <div
+                key={step.num}
+                ref={(el) => (stepRefs.current[i] = el)}
+                className={`ff-process-step${active === i ? " is-active" : ""}`}
+                data-reveal="up"
+              >
                 <span className="ff-process-dot" />
                 <div className="ff-process-num">{step.num}</div>
                 <h3 className="ff-process-title">{step.title}</h3>

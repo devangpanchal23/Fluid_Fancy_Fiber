@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { createNoise3D } from "simplex-noise";
@@ -27,8 +27,8 @@ export default function FiberStrand({
   length = 5.2,
   segments = 64,
   radialSegments = 8,
-  colorBase = "#221d16",
-  colorRim = "#c9b58e",
+  colorBase = "#17140f",
+  colorRim = "#b9a684",
   amp = 0.16,
   freq = 0.6,
   flowSpeed = 0.18,
@@ -55,6 +55,16 @@ export default function FiberStrand({
     return geo;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seed, length, radius, segments, radialSegments]);
+
+  // PHASE 11 — memory: TubeGeometry is built manually (new THREE.TubeGeometry
+  // in the useMemo above), not declared as JSX, so R3F's own automatic
+  // disposal doesn't cover it. Dispose the GPU buffers explicitly whenever
+  // this geometry is replaced (the useMemo deps above change) or the strand
+  // unmounts (e.g. the material explorer's lazy-mounted canvas going in and
+  // out of view under PHASE 11's frameloop gating) — otherwise every remount
+  // leaks the previous geometry's buffers, which JS garbage collection alone
+  // cannot free.
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   const uniforms = useMemo(
     () => ({

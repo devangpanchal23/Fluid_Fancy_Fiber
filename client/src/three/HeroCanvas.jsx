@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useWebglGate } from "./useWebglGate";
+import { useInView } from "../hooks/useInView";
 
 const FiberScene = lazy(() => import("./FiberScene"));
 
@@ -58,6 +59,10 @@ export default function HeroCanvas({ className = "" }) {
   const containerRef = useRef(null);
   const scrollProgress = useLocalScrollProgress(containerRef);
   const { enabled, quality, isPhone } = useWebglGate();
+  // PHASE 11: stop the render loop entirely once the hero has scrolled well
+  // out of view (generous rootMargin so it doesn't thrash on/off right at
+  // the boundary) rather than rendering a scene nobody can see.
+  const inView = useInView(containerRef);
 
   const fallback = <div className="ff-hero-canvas-fallback" aria-hidden="true" />;
 
@@ -66,7 +71,12 @@ export default function HeroCanvas({ className = "" }) {
       {enabled ? (
         <WebGLErrorBoundary fallback={fallback}>
           <Suspense fallback={fallback}>
-            <FiberScene scrollProgress={scrollProgress} quality={quality} reducedInteraction={isPhone} />
+            <FiberScene
+              scrollProgress={scrollProgress}
+              quality={quality}
+              reducedInteraction={isPhone}
+              frameloop={inView ? "always" : "never"}
+            />
           </Suspense>
         </WebGLErrorBoundary>
       ) : (

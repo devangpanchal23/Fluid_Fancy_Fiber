@@ -1,5 +1,6 @@
-import { Component, Suspense, lazy } from "react";
+import { Component, Suspense, lazy, useRef } from "react";
 import { useWebglGate } from "./useWebglGate";
+import { useInView } from "../hooks/useInView";
 
 const MaterialExplorerScene = lazy(() => import("./MaterialExplorerScene"));
 
@@ -27,7 +28,12 @@ class WebGLErrorBoundary extends Component {
 // contract as the hero: reduced-motion/no-WebGL/data-saver users get a
 // static card instead, never a blank space or a crash.
 export default function MaterialExplorerCanvas() {
+  const containerRef = useRef(null);
   const { enabled, quality } = useWebglGate();
+  // PHASE 11: this sits well down the page (inside the Mill section) and
+  // most visitors will never scroll to it in a given session — pausing its
+  // render loop while off-screen matters more here than for the hero.
+  const inView = useInView(containerRef);
 
   const fallback = (
     <div className="ff-material-explorer-fallback" aria-hidden="true">
@@ -36,11 +42,11 @@ export default function MaterialExplorerCanvas() {
   );
 
   return (
-    <div className="ff-material-explorer" data-cursor="3d">
+    <div ref={containerRef} className="ff-material-explorer" data-cursor="3d">
       {enabled ? (
         <WebGLErrorBoundary fallback={fallback}>
           <Suspense fallback={fallback}>
-            <MaterialExplorerScene quality={quality} />
+            <MaterialExplorerScene quality={quality} frameloop={inView ? "always" : "never"} />
           </Suspense>
         </WebGLErrorBoundary>
       ) : (

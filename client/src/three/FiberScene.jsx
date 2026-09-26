@@ -46,7 +46,7 @@ function FiberGroup({ scrollProgress, children }) {
   return <group ref={group}>{children}</group>;
 }
 
-export default function FiberScene({ scrollProgress = 0, quality = "high", reducedInteraction = false }) {
+export default function FiberScene({ scrollProgress = 0, quality = "high", reducedInteraction = false, frameloop = "always" }) {
   const preset = QUALITY_PRESETS[quality] || QUALITY_PRESETS.medium;
 
   const strands = useMemo(() => {
@@ -70,6 +70,7 @@ export default function FiberScene({ scrollProgress = 0, quality = "high", reduc
   return (
     <Canvas
       dpr={preset.dpr}
+      frameloop={frameloop}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
       camera={{ position: [0, 0, 6.4], fov: 42, near: 0.1, far: 30 }}
       style={{ pointerEvents: reducedInteraction ? "none" : "auto" }}
@@ -92,8 +93,8 @@ export default function FiberScene({ scrollProgress = 0, quality = "high", reduc
             opacity={s.opacity}
             position={s.position}
             rotation={s.rotation}
-            colorBase="#221d16"
-            colorRim="#c9b58e"
+            colorBase="#17140f"
+            colorRim="#b9a684"
           />
         ))}
       </FiberGroup>

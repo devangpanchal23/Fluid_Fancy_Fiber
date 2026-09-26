@@ -68,7 +68,7 @@ function DragRotate({ children, autoSpin = 0.06 }) {
   );
 }
 
-export default function MaterialExplorerScene({ quality = "high" }) {
+export default function MaterialExplorerScene({ quality = "high", frameloop = "always" }) {
   const segments = quality === "low" ? 32 : quality === "medium" ? 48 : 64;
   const radialSegments = quality === "low" ? 5 : quality === "medium" ? 6 : 8;
   const dpr = quality === "low" ? [1, 1] : quality === "medium" ? [1, 1.5] : [1, 2];
@@ -85,6 +85,7 @@ export default function MaterialExplorerScene({ quality = "high" }) {
   return (
     <Canvas
       dpr={dpr}
+      frameloop={frameloop}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
       camera={{ position: [0, 0, 4.4], fov: 40, near: 0.1, far: 20 }}
       style={{ touchAction: "none", cursor: "grab" }}
@@ -107,8 +108,8 @@ export default function MaterialExplorerScene({ quality = "high" }) {
             opacity={0.9}
             position={s.position}
             rotation={s.rotation}
-            colorBase="#221d16"
-            colorRim="#c9b58e"
+            colorBase="#17140f"
+            colorRim="#b9a684"
           />
         ))}
       </DragRotate>

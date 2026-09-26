@@ -1039,14 +1039,18 @@ textarea::placeholder {
    (below) takes over at 900px+, where hover can drive it instead. Collapses
    to nothing while its row is closed (.ff-line-panel is display:grid with
    grid-template-rows:0fr), then fades/slides in as the row opens — the
-   touch-friendly stand-in for the desktop hover reveal. */
+   touch-friendly stand-in for the desktop hover reveal.
+   The source artwork is a square (1:1) cone/spec sheet with logo, title and
+   spec text baked in, so the wrapper is locked to aspect-ratio:1/1 and the
+   image uses object-fit:contain — this is the single source of truth for
+   the image's shape; never crop this artwork with object-fit:cover. */
 .ff-line-mobile-preview {
   grid-column: 1 / -1;
   position: relative;
   margin: 0 0 6px;
   width: 100%;
   max-width: 360px;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   border: 1px solid var(--ff-line-strong);
   overflow: hidden;
   background: #e6dfd0;
@@ -1062,7 +1066,8 @@ textarea::placeholder {
 .ff-line-mobile-preview img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   filter: saturate(0.5) sepia(0.14) contrast(1.03);
 }
 .ff-line-mobile-dots {
@@ -1145,10 +1150,17 @@ textarea::placeholder {
     display: block;
   }
 }
+/* Same square (1:1) wrapper contract as .ff-line-mobile-preview above — width
+   comes from the grid column (.ff-catalogue-grid), height follows from
+   aspect-ratio, so the box is always square instead of being computed from
+   two unrelated formulas (grid fr vs. vw-clamped height, as it was before).
+   max-width caps it on very wide viewports without hardcoding a breakpoint. */
 .ff-preview-frame {
   position: relative;
   margin: 0;
-  height: clamp(330px, 42vw, 480px);
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1 / 1;
   border: 1px solid var(--ff-line-strong);
   overflow: hidden;
   background: #e6dfd0;
@@ -1167,7 +1179,8 @@ textarea::placeholder {
 .ff-preview-slot img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   filter: saturate(0.5) sepia(0.14) contrast(1.03);
 }
 .ff-preview-caption {

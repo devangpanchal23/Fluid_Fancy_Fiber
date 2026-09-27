@@ -5,6 +5,7 @@ const NAV = [
   { to: "/admin/products", label: "Products", icon: "box" },
   { to: "/admin/media", label: "Media library", icon: "image" },
   { to: "/admin/categories", label: "Categories", icon: "tag" },
+  { to: "/admin/video-library", label: "Video Library", icon: "video" },
   { to: "/admin/videos", label: "Videos", icon: "video" },
   { to: "/admin/people", label: "People", icon: "people" },
   { to: "/admin/cone-library", label: "Cone library", icon: "cone" },

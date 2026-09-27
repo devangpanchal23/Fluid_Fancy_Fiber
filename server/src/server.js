@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./config/env.js";
 import mongoose from "mongoose";
 import { app } from "./app.js";
 import { connectDB, isDbConnected } from "./config/db.js";

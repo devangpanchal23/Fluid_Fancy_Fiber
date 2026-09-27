@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import VideoUploader from "../components/VideoUploader";
+import VideoPicker from "../components/VideoPicker";
+import { normalizeVideoUrl } from "../../utils/videoSource";
 import ImageUploader from "../components/ImageUploader";
 import ConfirmDialog from "../components/ConfirmDialog";
 
-const EMPTY = { title: "", description: "", url: "", publicId: "", duration: null, thumbnail: null, status: "draft" };
+const EMPTY = { videoMedia: null, sourceType: "direct", title: "", description: "", url: "", publicId: "", duration: null, thumbnail: null, status: "draft" };
 
 export default function VideoForm() {
   const { id } = useParams();
@@ -18,6 +19,7 @@ export default function VideoForm() {
   const [initial, setInitial] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(isEdit);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
@@ -35,6 +37,8 @@ export default function VideoForm() {
         if (cancelled) return;
         const v = d.video;
         const loaded = {
+          videoMedia: v.videoMedia || null,
+          sourceType: v.sourceType || "direct",
           title: v.title,
           description: v.description || "",
           url: v.url,
@@ -46,7 +50,7 @@ export default function VideoForm() {
         setForm(loaded);
         setInitial(loaded);
       })
-      .catch((err) => toast.error(err.message))
+      .catch((err) => { if (!cancelled) { setLoadError(err.message); toast.error(err.message); } })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
@@ -56,20 +60,16 @@ export default function VideoForm() {
 
   useEffect(() => {
     function onBeforeUnload(e) {
-      if (!dirty) return;
+      if (!dirty && !uploading) return;
       e.preventDefault();
       e.returnValue = "";
     }
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [dirty]);
+  }, [dirty, uploading]);
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
-  }
-
-  function onVideoUploaded(uploaded) {
-    setForm((f) => ({ ...f, url: uploaded.url, publicId: uploaded.publicId, duration: uploaded.duration, thumbnail: f.thumbnail || uploaded.thumbnail }));
   }
 
   async function save(status) {
@@ -78,13 +78,14 @@ export default function VideoForm() {
       toast.error("Please wait for the upload to finish before saving.");
       return;
     }
-    if (!form.url || !form.publicId) {
-      toast.error("Upload a video first.");
-      return;
-    }
+    if (saving) return;
+    if (!form.title.trim()) { setErrors({ title: "Enter a title." }); return; }
+    let source;
+    try { source = form.videoMedia ? {} : normalizeVideoUrl(form.url); }
+    catch (e) { setErrors({ url: e.message }); toast.error(e.message); return; }
     setSaving(true);
     try {
-      const payload = { ...form, status };
+      const payload = { ...form, ...source, status };
       if (isEdit) {
         await api.put(`/videos/${id}`, payload);
         toast.success("Video updated.");
@@ -112,19 +113,21 @@ export default function VideoForm() {
     else navigate("/admin/videos");
   }
 
+  if (loadError) return <div className="ff-admin-error-state" role="alert">{loadError} <button type="button" onClick={() => navigate("/admin/videos")}>Back to videos</button></div>;
   if (loading) return <div className="ff-admin-loading-state">Loading video…</div>;
 
   return (
     <form className="ff-admin-form" onSubmit={onSubmit}>
       <fieldset className="ff-admin-fieldset">
-        <legend>Video file</legend>
-        <VideoUploader video={form} onChange={(v) => (v ? onVideoUploaded(v) : set("url", ""))} onUploadingChange={setVideoUploading} />
+        <legend>Video source</legend>
+        <VideoPicker video={form} onChange={(source) => setForm((f) => ({ ...f, ...source }))} onUploadingChange={setVideoUploading} disabled={saving} />
+        {errors.url && <p className="ff-field-error" role="alert">{errors.url}</p>}
       </fieldset>
 
       <div className="ff-admin-form-grid">
         <label className={`ff-field${errors.title ? " has-error" : ""}`}>
           <span className="ff-field-label">Title</span>
-          <input value={form.title} onChange={(e) => set("title", e.target.value)} required />
+          <input value={form.title} onChange={(e) => set("title", e.target.value)} required maxLength={160} />
           <span className="ff-field-error">{errors.title || ""}</span>
         </label>
       </div>
@@ -140,7 +143,7 @@ export default function VideoForm() {
       </fieldset>
 
       <div className="ff-admin-form-actions">
-        <button type="button" className="ff-btn ff-btn-ghost" onClick={handleCancel} disabled={saving}>
+        <button type="button" className="ff-btn ff-btn-ghost" onClick={handleCancel} disabled={saving || uploading}>
           Cancel
         </button>
         <button type="button" className="ff-btn ff-btn-ghost" disabled={saving || uploading} onClick={() => save("draft")}>

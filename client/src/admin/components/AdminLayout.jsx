@@ -10,6 +10,8 @@ const LABELS = {
   new: "New",
   edit: "Edit",
   categories: "Categories",
+  videos: "Videos",
+  "video-library": "Video Library",
   "cone-library": "Cone library",
   enquiries: "Enquiries",
   settings: "Settings",

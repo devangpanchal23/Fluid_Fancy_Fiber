@@ -1,139 +1,76 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
+import { api } from '../api/client';
+import { VIDEO_ACCEPT, validateVideoFile, videoUploadConfig } from '../../utils/videoSource';
 
-const ALLOWED_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
-const MAX_SIZE = 500 * 1024 * 1024; // 500MB — Cloudinary's own plan limits apply too
-
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-function validateFile(file) {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return "Unsupported file type. Upload an MP4, WEBM or MOV video.";
-  }
-  if (file.size > MAX_SIZE) {
-    return "Video is too large. Maximum size is 500MB.";
-  }
-  return null;
-}
-
-function thumbnailFor(publicId, resourceCloudName) {
-  return { url: `https://res.cloudinary.com/${resourceCloudName}/video/upload/so_0/${publicId}.jpg`, alt: "" };
-}
-
-// Uploads directly from the browser to Cloudinary using an unsigned preset —
-// the video file never passes through our own server, which avoids Vercel
-// serverless request-size/timeout limits entirely. Uses XMLHttpRequest
-// (not fetch) specifically because it's the only way to get real upload
-// progress percentage.
-// `onUploadingChange` lets the parent form disable its Save button while a
-// file is still uploading — VideoForm also independently refuses to save
-// without a completed url/publicId, but this closes the gap visually too.
-export default function VideoUploader({ video, onChange, onUploadingChange }) {
-  const inputRef = useRef(null);
+export default function VideoUploader({ onChange, onUploadingChange }) {
+  const input = useRef(null);
+  const xhrRef = useRef(null);
+  const mounted = useRef(true);
+  const busy = useRef(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [error, setError] = useState("");
-
-  const configured = Boolean(CLOUD_NAME && UPLOAD_PRESET);
-
-  function setUploadingState(value) {
-    setUploading(value);
-    onUploadingChange?.(value);
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(null);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; xhrRef.current?.abort(); }; }, []);
+  useEffect(() => {
+    function warn(event) { if (uploading || pending) { event.preventDefault(); event.returnValue = ''; } }
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [uploading, pending]);
+  function state(value) { busy.current = value; if (mounted.current) { setUploading(value); onUploadingChange?.(value); } }
+  async function register(record) {
+    const { media } = await api.post('/video-media', record);
+    if (mounted.current) { setPending(null); onChange?.(media); }
   }
-
-  function handleFile(file) {
-    setError("");
-    const validationError = validateFile(file);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    if (!configured) {
-      setError("Video uploads aren't configured yet — set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET (see client/.env.example).");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
-
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
-    });
-
-    xhr.onload = () => {
-      setUploadingState(false);
-      let data;
-      try {
-        data = JSON.parse(xhr.responseText);
-      } catch {
-        data = null;
-      }
-      if (xhr.status >= 200 && xhr.status < 300 && data?.secure_url) {
-        onChange({
-          url: data.secure_url,
-          publicId: data.public_id,
-          duration: data.duration || null,
-          thumbnail: thumbnailFor(data.public_id, CLOUD_NAME)
-        });
-      } else {
-        setError(data?.error?.message || "Upload failed. Please try again.");
-      }
-    };
-
-    xhr.onerror = () => {
-      setUploadingState(false);
-      setError("Upload failed. Please check your connection and try again.");
-    };
-
-    setUploadingState(true);
-    setProgress(0);
-    xhr.send(formData);
+  async function retry() {
+    if (busy.current) return;
+    state(true); setError('');
+    try { await register(pending); } catch (e) { if (mounted.current) setError(`Video uploaded, but library save failed: ${e.message} Retry saving below; do not upload again.`); }
+    finally { state(false); }
   }
-
-  function onInputChange(e) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (file) handleFile(file);
+  async function upload(file) {
+    if (busy.current) return;
+    const invalid = validateVideoFile(file);
+    setError(invalid || '');
+    if (invalid) return;
+    state(true); setProgress(0);
+    try {
+      // Verify server credentials before sending a large file, and use runtime
+      // config when the production bundle was built without VITE_* values.
+      const fallback = await api.get('/video-media/config');
+      const config = videoUploadConfig(import.meta.env, fallback);
+      if (config.cloudName !== fallback.cloudName) throw new Error('Client and server Cloudinary cloud names must match. Update environment configuration and rebuild.');
+      if (!mounted.current) return;
+      const data = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest(); xhrRef.current = xhr;
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${config.cloudName}/video/upload`);
+        xhr.timeout = 15 * 60 * 1000;
+        xhr.upload.onprogress = (event) => { if (mounted.current && event.lengthComputable) setProgress(Math.round(event.loaded / event.total * 100)); };
+        xhr.onload = () => {
+          let body; try { body = JSON.parse(xhr.responseText); } catch { /* handled below */ }
+          if (xhr.status >= 200 && xhr.status < 300 && body?.public_id && body.resource_type === 'video') resolve(body);
+          else reject(new Error(body?.error?.message || 'Cloudinary upload failed. Please retry.'));
+        };
+        xhr.onerror = () => reject(new Error('Upload failed. Check your connection and retry.'));
+        xhr.ontimeout = () => reject(new Error('Upload timed out after 15 minutes. Retry on a faster connection.'));
+        xhr.onabort = () => reject(new Error('Upload cancelled.'));
+        const form = new FormData(); form.append('file', file); form.append('upload_preset', config.uploadPreset);
+        xhr.send(form);
+      });
+      xhrRef.current = null;
+      const record = { publicId: data.public_id, originalName: file.name };
+      if (mounted.current) setPending(record);
+      try { await register(record); }
+      catch (e) { throw new Error(`Video uploaded, but library save failed: ${e.message} Retry saving below; do not upload again.`); }
+    } catch (e) { if (mounted.current) setError(e.message); }
+    finally { xhrRef.current = null; state(false); }
   }
-
-  function removeVideo() {
-    onChange(null);
-    setError("");
-  }
-
-  return (
-    <div className="ff-admin-uploader">
-      {video?.url ? (
-        <div className="ff-admin-uploader-preview">
-          <video src={video.url} poster={video.thumbnail?.url} controls style={{ width: 240, height: 135 }} />
-          <button type="button" className="ff-admin-image-remove" onClick={removeVideo}>
-            Remove
-          </button>
-        </div>
-      ) : (
-        <>
-          <button
-            type="button"
-            className="ff-admin-uploader-dropzone"
-            style={{ width: 240, height: 135 }}
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-          >
-            {uploading ? `Uploading… ${progress}%` : "+ Upload video"}
-          </button>
-          {uploading && (
-            <div className="ff-admin-progress-track">
-              <div className="ff-admin-progress-bar" style={{ width: `${progress}%` }} />
-            </div>
-          )}
-        </>
-      )}
-      <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(",")} onChange={onInputChange} hidden />
-      {error && <p className="ff-field-error">{error}</p>}
-    </div>
-  );
+  return <div className="ff-admin-uploader">
+    <button type="button" className="ff-btn ff-btn-primary" disabled={uploading || Boolean(pending)} onClick={() => input.current?.click()}>+ Upload video</button>
+    <input ref={input} type="file" accept={VIDEO_ACCEPT} hidden onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) upload(file); }} />
+    <p>MP4, WEBM or MOV · Maximum 100 MiB</p>
+    {uploading && <><p role="status">{progress === 100 ? 'Upload received. Processing and saving to library…' : `Uploading… ${progress}%`}</p><progress value={progress} max="100" aria-label="Video upload progress" style={{ width: '100%', accentColor: 'var(--ff-accent)' }} />{xhrRef.current && <button type="button" className="ff-btn ff-btn-ghost" onClick={() => xhrRef.current?.abort()}>Cancel upload</button>}</>}
+    {error && <p className="ff-field-error" role="alert">{error}</p>}
+    {pending && !uploading && <button type="button" className="ff-btn ff-btn-ghost" onClick={retry}>Retry library save</button>}
+  </div>;
 }

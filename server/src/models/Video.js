@@ -5,21 +5,21 @@ const imageSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Video bytes live on Cloudinary (uploaded directly from the admin's
-// browser via an unsigned preset — see client/src/admin/components/
-// VideoUploader.jsx); we only ever store the resulting URL/public ID here.
+// Content references a library asset or a validated external video URL.
 const videoSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 160 },
     description: { type: String, trim: true, maxlength: 1000 },
     url: { type: String, required: true, trim: true, maxlength: 2000 },
-    publicId: { type: String, required: true, trim: true, maxlength: 300 },
+    sourceType: { type: String, enum: ["direct", "drive", "library"], default: "direct" },
+    videoMedia: { type: mongoose.Schema.Types.ObjectId, ref: "VideoMedia", default: null },
+    publicId: { type: String, default: "", trim: true, maxlength: 300 },
     thumbnail: { type: imageSchema, default: null },
     duration: { type: Number, default: null },
     status: { type: String, enum: ["draft", "published"], default: "draft", index: true },
     order: { type: Number, default: 0 }
   },
-  { timestamps: true }
+  { timestamps: true, optimisticConcurrency: true }
 );
 
 videoSchema.index({ status: 1, order: 1 });

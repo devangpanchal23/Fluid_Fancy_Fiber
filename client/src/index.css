@@ -1450,13 +1450,33 @@ textarea::placeholder {
 
 .ff-video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
   gap: clamp(14px, 1.6vw, 24px);
   margin-top: clamp(20px, 3vh, 32px);
 }
 .ff-video-figure {
   margin: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 28rem;
+  justify-self: center;
+  overflow-wrap: anywhere;
 }
+/* Scoped to public gallery: admin previews retain their existing layout. */
+.ff-video-frame.ff-video-frame--playing {
+  aspect-ratio: auto;
+  overflow: visible;
+  background: transparent;
+}
+.ff-video-frame video,
+.ff-video-frame iframe {
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+
 .ff-video-frame {
   position: relative;
   aspect-ratio: 16 / 9;

@@ -128,7 +128,7 @@ export default function VideoList() {
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         title="Delete this video?"
-        message={pendingDelete ? `Deleting "${pendingDelete.title}" removes it from Cloudinary and cannot be undone.` : ""}
+        message={pendingDelete ? `Deleting "${pendingDelete.title}" removes this content item from the site. Uploaded files are retained; remove unused library videos separately.` : ""}
         confirmLabel="Delete"
         danger
         onConfirm={confirmDelete}

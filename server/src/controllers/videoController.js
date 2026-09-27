@@ -1,36 +1,9 @@
-import { v2 as cloudinary } from "cloudinary";
 import Video from "../models/Video.js";
+import { deleteFromCloudinary, defaultThumbnail } from "../utils/cloudinaryVideo.js";
 
 const STATUSES = ["draft", "published"];
-
-function isCloudinaryConfigured() {
-  return Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
-}
-
-// Best-effort delete of the Cloudinary asset — mirrors mailer.js's posture:
-// an admin deleting a video record must not be blocked by Cloudinary being
-// unreachable or unconfigured (e.g. local dev without credentials set).
-async function deleteFromCloudinary(publicId) {
-  if (!publicId || !isCloudinaryConfigured()) {
-    console.warn("[video] Cloudinary not configured — skipping remote asset deletion.");
-    return;
-  }
-  try {
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
-    await cloudinary.uploader.destroy(publicId, { resource_type: "video" });
-  } catch (err) {
-    console.error("[video] Failed to delete Cloudinary asset:", err?.message || err);
-  }
-}
-
-function defaultThumbnail(url, publicId) {
-  if (!publicId) return null;
-  return { url: `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME || "demo"}/video/upload/so_0/${publicId}.jpg`, alt: "" };
-}
+const SOURCES = ["upload", "url"];
+const EMBED_TYPES = ["native", "iframe"];
 
 export async function listVideos(req, res, next) {
   try {
@@ -79,12 +52,16 @@ export async function getVideo(req, res, next) {
 
 function validateVideoBody(body, { partial = false } = {}) {
   const errors = {};
-  const required = ["title", "url", "publicId"];
+  const source = body.source || "upload";
   if (!partial) {
-    for (const field of required) {
-      if (!body[field] || !String(body[field]).trim()) errors[field] = "Required.";
-    }
+    if (!body.title || !String(body.title).trim()) errors.title = "Required.";
+    if (!body.url || !String(body.url).trim()) errors.url = "Required.";
+    // A pasted URL has no Cloudinary asset to speak of — only an upload
+    // (from the file picker or the Video Library) needs a publicId.
+    if (source === "upload" && (!body.publicId || !String(body.publicId).trim())) errors.publicId = "Required.";
   }
+  if (body.source && !SOURCES.includes(body.source)) errors.source = "Invalid source.";
+  if (body.embedType && !EMBED_TYPES.includes(body.embedType)) errors.embedType = "Invalid embed type.";
   if (body.status && !STATUSES.includes(body.status)) errors.status = "Invalid status.";
   return errors;
 }
@@ -97,13 +74,17 @@ export async function createVideo(req, res, next) {
       return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
     }
 
+    const source = body.source || "upload";
     const count = await Video.countDocuments();
     const video = await Video.create({
       title: String(body.title).trim(),
       description: body.description || "",
       url: body.url,
-      publicId: body.publicId,
-      thumbnail: body.thumbnail || defaultThumbnail(body.url, body.publicId),
+      publicId: source === "upload" ? body.publicId || "" : "",
+      source,
+      embedType: body.embedType || "native",
+      videoAsset: body.videoAsset || null,
+      thumbnail: body.thumbnail || (source === "upload" ? defaultThumbnail(body.publicId) : null),
       duration: body.duration ?? null,
       status: body.status || "draft",
       order: body.order !== undefined ? body.order : count
@@ -127,7 +108,19 @@ export async function updateVideo(req, res, next) {
       return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
     }
 
-    const assignable = ["title", "description", "url", "publicId", "thumbnail", "duration", "status", "order"];
+    const assignable = [
+      "title",
+      "description",
+      "url",
+      "publicId",
+      "source",
+      "embedType",
+      "videoAsset",
+      "thumbnail",
+      "duration",
+      "status",
+      "order"
+    ];
     for (const field of assignable) {
       if (body[field] !== undefined) video[field] = body[field];
     }
@@ -171,7 +164,14 @@ export async function deleteVideo(req, res, next) {
     if (!video) {
       return res.status(404).json({ success: false, message: "Video not found." });
     }
-    await deleteFromCloudinary(video.publicId);
+    // Only remove the Cloudinary asset if it isn't tracked in the Video
+    // Library — a library-tracked asset may be reused by other Video Gallery
+    // entries, and is only ever deleted from the library itself
+    // (videoAssetController.deleteVideoAsset), same as Media never gets
+    // deleted just because one Product stops using it.
+    if (!video.videoAsset && video.source === "upload") {
+      await deleteFromCloudinary(video.publicId);
+    }
     await video.deleteOne();
     res.json({ success: true, data: null });
   } catch (err) {

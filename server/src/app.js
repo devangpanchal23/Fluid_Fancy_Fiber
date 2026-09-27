@@ -10,6 +10,7 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import mediaRoutes from "./routes/mediaRoutes.js";
 import variantRoutes from "./routes/variantRoutes.js";
 import videoRoutes from "./routes/videoRoutes.js";
+import videoAssetRoutes from "./routes/videoAssetRoutes.js";
 import coneProductRoutes from "./routes/coneProductRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
@@ -104,6 +105,7 @@ app.use("/api/uploads", uploadRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/variants", variantRoutes);
 app.use("/api/videos", videoRoutes);
+app.use("/api/video-assets", videoAssetRoutes);
 app.use("/api/cone-library", coneProductRoutes);
 
 app.use(notFound);

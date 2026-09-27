@@ -13,6 +13,7 @@ import VariantList from "./pages/VariantList";
 import VariantForm from "./pages/VariantForm";
 import VideoList from "./pages/VideoList";
 import VideoForm from "./pages/VideoForm";
+import VideoAssetLibrary from "./pages/VideoAssetLibrary";
 import PersonList from "./pages/PersonList";
 import PersonForm from "./pages/PersonForm";
 import ConeLibraryList from "./pages/ConeLibraryList";
@@ -47,6 +48,7 @@ export default function AdminApp() {
             <Route path="videos" element={<VideoList />} />
             <Route path="videos/new" element={<VideoForm />} />
             <Route path="videos/:id/edit" element={<VideoForm />} />
+            <Route path="video-library" element={<VideoAssetLibrary />} />
             <Route path="people" element={<PersonList />} />
             <Route path="people/new" element={<PersonForm />} />
             <Route path="people/:id/edit" element={<PersonForm />} />

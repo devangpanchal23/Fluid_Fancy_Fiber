@@ -265,6 +265,26 @@
   color: var(--ff-error-dark);
   border-color: var(--ff-error);
 }
+
+.ff-admin-config-banner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--ff-error);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ff-error) 12%, transparent);
+  color: var(--ff-error-dark);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ff-admin-config-banner strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 13.5px;
+}
 .ff-admin-empty {
   color: var(--ff-muted);
   font-size: 13px;

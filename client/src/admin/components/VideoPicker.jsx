@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import { validateVideoFile, uploadVideoToCloudinary, ALLOWED_VIDEO_TYPES } from "../utils/cloudinaryVideoUpload";
+import {
+  validateVideoFile,
+  uploadVideoToCloudinary,
+  isCloudinaryVideoConfigured,
+  VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE,
+  ALLOWED_VIDEO_TYPES
+} from "../utils/cloudinaryVideoUpload";
 import { parseVideoUrl } from "../utils/videoEmbed";
 import VideoPlayer from "../../components/VideoPlayer";
 
@@ -24,8 +30,9 @@ function formatDuration(seconds) {
 // URL directly (e.g. a Google Drive share link) instead of uploading a file.
 export default function VideoPicker({ open, onClose, onConfirm }) {
   const toast = useToast();
+  const configured = isCloudinaryVideoConfigured();
   const inputRef = useRef(null);
-  const [tab, setTab] = useState("library");
+  const [tab, setTab] = useState(configured ? "library" : "url");
 
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -43,7 +50,7 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
 
   useEffect(() => {
     if (!open) return;
-    setTab("library");
+    setTab(configured ? "library" : "url");
     setSelectedAsset(null);
     setQ("");
     setPage(1);
@@ -84,6 +91,10 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
   if (!open) return null;
 
   async function handleUpload(fileList) {
+    if (!configured) {
+      toast.error(VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE);
+      return;
+    }
     const files = Array.from(fileList);
     for (const file of files) {
       const validationError = validateVideoFile(file);
@@ -208,6 +219,15 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
 
         {tab === "library" ? (
           <>
+            {!configured && (
+              <div className="ff-admin-config-banner" role="alert">
+                <span>
+                  <strong>Video uploads aren't configured yet.</strong>
+                  Set <code>VITE_CLOUDINARY_CLOUD_NAME</code> and <code>VITE_CLOUDINARY_UPLOAD_PRESET</code> in <code>client/.env</code>, then
+                  restart the dev server. Use "Paste URL" in the meantime.
+                </span>
+              </div>
+            )}
             <div className="ff-admin-toolbar">
               <input
                 type="search"
@@ -219,11 +239,24 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
                 }}
                 className="ff-admin-search"
               />
-              <button type="button" className="ff-btn ff-btn-ghost" onClick={() => inputRef.current?.click()} disabled={uploading}>
+              <button
+                type="button"
+                className="ff-btn ff-btn-ghost"
+                onClick={() => inputRef.current?.click()}
+                disabled={uploading || !configured}
+                title={configured ? undefined : VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE}
+              >
                 {uploading && <span className="ff-btn-spinner" />}
                 <span>{uploading ? `Uploading… ${progress}%` : "+ Upload new video"}</span>
               </button>
-              <input ref={inputRef} type="file" accept={ALLOWED_VIDEO_TYPES.join(",")} onChange={onInputChange} hidden />
+              <input
+                ref={inputRef}
+                type="file"
+                accept={ALLOWED_VIDEO_TYPES.join(",")}
+                onChange={onInputChange}
+                hidden
+                disabled={!configured}
+              />
             </div>
 
             {uploading && (

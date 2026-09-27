@@ -4,6 +4,9 @@ export const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB — Cloudinary's own p
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
+export const VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE =
+  "Video uploads aren't configured yet — set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in client/.env (see client/.env.example), then restart the dev server. \"Paste URL\" works without this.";
+
 export function isCloudinaryVideoConfigured() {
   return Boolean(CLOUD_NAME && UPLOAD_PRESET);
 }
@@ -32,11 +35,7 @@ export function thumbnailForVideo(publicId) {
 export function uploadVideoToCloudinary(file, onProgress) {
   return new Promise((resolve, reject) => {
     if (!isCloudinaryVideoConfigured()) {
-      reject(
-        new Error(
-          "Video uploads aren't configured yet — set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET (see client/.env.example)."
-        )
-      );
+      reject(new Error(VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE));
       return;
     }
 

@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import { validateVideoFile, uploadVideoToCloudinary, ALLOWED_VIDEO_TYPES } from "../utils/cloudinaryVideoUpload";
+import {
+  validateVideoFile,
+  uploadVideoToCloudinary,
+  isCloudinaryVideoConfigured,
+  VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE,
+  ALLOWED_VIDEO_TYPES
+} from "../utils/cloudinaryVideoUpload";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 function formatSize(bytes) {
@@ -31,6 +37,7 @@ function formatDate(iso) {
 // Structurally parallel to MediaLibrary.jsx (the Image Library page).
 export default function VideoAssetLibrary() {
   const toast = useToast();
+  const configured = isCloudinaryVideoConfigured();
   const inputRef = useRef(null);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -68,6 +75,10 @@ export default function VideoAssetLibrary() {
   }
 
   async function handleFiles(fileList) {
+    if (!configured) {
+      toast.error(VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE);
+      return;
+    }
     const files = Array.from(fileList);
     let uploadedCount = 0;
     let sawError = false;
@@ -128,6 +139,16 @@ export default function VideoAssetLibrary() {
 
   return (
     <div>
+      {!configured && (
+        <div className="ff-admin-config-banner" role="alert">
+          <span>
+            <strong>Video uploads aren't configured yet.</strong>
+            Set <code>VITE_CLOUDINARY_CLOUD_NAME</code> and <code>VITE_CLOUDINARY_UPLOAD_PRESET</code> in <code>client/.env</code> (see{" "}
+            <code>client/.env.example</code> for the one-time Cloudinary dashboard steps), then restart the dev server. Video Gallery entries can
+            still be added via "Paste URL" in the meantime.
+          </span>
+        </div>
+      )}
       <div className="ff-admin-toolbar">
         <input
           type="search"
@@ -136,11 +157,17 @@ export default function VideoAssetLibrary() {
           onChange={(e) => resetPage(setQ)(e.target.value)}
           className="ff-admin-search"
         />
-        <button type="button" className="ff-btn ff-btn-primary" onClick={() => inputRef.current?.click()} disabled={uploading}>
+        <button
+          type="button"
+          className="ff-btn ff-btn-primary"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading || !configured}
+          title={configured ? undefined : VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE}
+        >
           {uploading && <span className="ff-btn-spinner" />}
           <span>{uploading ? `Uploading… ${progress}%` : "+ Upload videos"}</span>
         </button>
-        <input ref={inputRef} type="file" accept={ALLOWED_VIDEO_TYPES.join(",")} multiple onChange={onInputChange} hidden />
+        <input ref={inputRef} type="file" accept={ALLOWED_VIDEO_TYPES.join(",")} multiple onChange={onInputChange} hidden disabled={!configured} />
       </div>
 
       {uploading && (

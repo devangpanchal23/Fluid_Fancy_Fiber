@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import VideoPlayer from "./VideoPlayer";
 import { getApiBase } from "../apiBase";
+import VideoPlayer from "./VideoPlayer";
 
 const API_URL = getApiBase();
 
@@ -63,9 +63,9 @@ export default function VideoGallery() {
             const isPlaying = playingId === v._id;
             return (
               <figure key={v._id} className="ff-video-figure" data-reveal="up">
-                <div className={`ff-video-frame${isPlaying ? " ff-video-frame--playing" : ""}`}>
+                <div className="ff-video-frame">
                   {isPlaying ? (
-                    <VideoPlayer video={v} autoPlay />
+                    <VideoPlayer url={v.url} embedType={v.embedType} title={v.title} autoPlay className="ff-video-player" />
                   ) : (
                     <button type="button" className="ff-video-play" onClick={() => setPlayingId(v._id)} aria-label={`Play ${v.title}`}>
                       {v.thumbnail?.url && <img src={v.thumbnail.url} alt="" />}

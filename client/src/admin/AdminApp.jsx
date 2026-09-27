@@ -7,13 +7,13 @@ import AdminLogin from "./pages/AdminLogin";
 import Dashboard from "./pages/Dashboard";
 import ProductList from "./pages/ProductList";
 import ProductForm from "./pages/ProductForm";
-import VideoLibrary from "./pages/VideoLibrary";
 import MediaLibrary from "./pages/MediaLibrary";
 import CategoryManager from "./pages/CategoryManager";
 import VariantList from "./pages/VariantList";
 import VariantForm from "./pages/VariantForm";
 import VideoList from "./pages/VideoList";
 import VideoForm from "./pages/VideoForm";
+import VideoAssetLibrary from "./pages/VideoAssetLibrary";
 import PersonList from "./pages/PersonList";
 import PersonForm from "./pages/PersonForm";
 import ConeLibraryList from "./pages/ConeLibraryList";
@@ -43,12 +43,12 @@ export default function AdminApp() {
             <Route path="products/:productId/variants" element={<VariantList />} />
             <Route path="products/:productId/variants/new" element={<VariantForm />} />
             <Route path="products/:productId/variants/:id/edit" element={<VariantForm />} />
-            <Route path="video-library" element={<VideoLibrary />} />
             <Route path="media" element={<MediaLibrary />} />
             <Route path="categories" element={<CategoryManager />} />
             <Route path="videos" element={<VideoList />} />
             <Route path="videos/new" element={<VideoForm />} />
             <Route path="videos/:id/edit" element={<VideoForm />} />
+            <Route path="video-library" element={<VideoAssetLibrary />} />
             <Route path="people" element={<PersonList />} />
             <Route path="people/new" element={<PersonForm />} />
             <Route path="people/:id/edit" element={<PersonForm />} />

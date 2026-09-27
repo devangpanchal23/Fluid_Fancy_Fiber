@@ -38,7 +38,7 @@ The catalogue shown on the public site is now backed by MongoDB — products are
 - **Dashboard** — total/active/draft product counts, total variants, total categories, total videos, total people, total enquiries, recent products, recent enquiries, quick actions.
 - **Product/Type CMS** — CRUD with search, status/category filters, sort, pagination, reordering; Draft/Active/Archived status; Featured toggle. Each Type links to its own **Variant** manager for SKU, dynamic key-value specifications, and a reorderable, real file-upload image gallery with a "Make primary" action (see [Product Hierarchy](#product-hierarchy) and [Image Uploads](#image-uploads)).
 - **Category management** — add/rename/activate/deactivate/delete/reorder, with an uploaded image per category, and delete blocked while any product still references the category.
-- **Video Gallery management** — upload direct-to-Cloudinary with a real progress bar, title/description, optional thumbnail override, publish/draft toggle, reordering, delete (see [Video Gallery](#video-gallery)).
+- **Video Gallery management** — pick a video from the **Video Library** (direct-to-Cloudinary upload with a real progress bar, or reuse a previously-uploaded one) or **paste a URL** (Google Drive share links auto-convert to an embeddable form), plus title/description, optional thumbnail override, publish/draft toggle, reordering, delete (see [Video Gallery](#video-gallery)).
 - **People/Team management** — full CRUD (name, designation, email, phone, bio, uploaded photo, links, active/inactive, display order) with search and up/down reordering; the public People section renders whatever's here.
 - **Cone library management** — full CRUD for the "Cone library" grid (product image picked from the Media Library or uploaded, product name, product details), all three required, with up/down reordering; the public Cone library section renders whatever's here. On a fresh database run `npm run seed:cone-library --prefix server` once to load the six original cards.
 - **Enquiry management** — the existing contact-form and spec-sheet submissions, now listable/searchable/paginated with a status workflow (`New → In Progress → Contacted → Closed → Archived`) and delete.
@@ -167,10 +167,13 @@ All responses use `{ success: true, data }` or `{ success: false, message, error
 | DELETE | `/api/variants/:id`         | Admin       | Delete permanently |
 | GET    | `/api/videos`               | Public\*    | List videos — `?status=&page=&limit=&sort=`. Anonymous callers always get `status=published` only |
 | GET    | `/api/videos/:id`           | Public\*    | Get one video (404 if not `published` and not an admin) |
-| POST   | `/api/videos`               | Admin       | Save a video's metadata (title, description, Cloudinary `url`/`publicId`, thumbnail, duration) — the file itself is uploaded client-side directly to Cloudinary first, see [Video Gallery](#video-gallery) |
+| POST   | `/api/videos`               | Admin       | Save a video's metadata (title, description, `url`, `source` (`upload`/`url`), `embedType` (`native`/`iframe`), Cloudinary `publicId`/`videoAsset` when uploaded, thumbnail, duration) — see [Video Gallery](#video-gallery) |
 | PUT    | `/api/videos/:id`           | Admin       | Update a video / change its status |
 | PUT    | `/api/videos/:id/reorder`   | Admin       | Swap `order` with the previous/next video |
-| DELETE | `/api/videos/:id`           | Admin       | Delete the record and best-effort delete the asset from Cloudinary |
+| DELETE | `/api/videos/:id`           | Admin       | Delete the record. Only deletes the Cloudinary asset too if it isn't tracked in the Video Library (a library-tracked asset is only ever deleted from the library itself) |
+| GET    | `/api/video-assets`         | Admin       | List the Video Library — `?q=&page=&limit=` |
+| POST   | `/api/video-assets`         | Admin       | Register a video already uploaded client-side to Cloudinary (`url`, `publicId`, `originalName`, `mimeType`, `size`, `duration`, `thumbnail`) |
+| DELETE | `/api/video-assets/:id`     | Admin       | Delete a library video + its Cloudinary asset. `409` while any Video Gallery entry still uses it, unless `?force=true` (which also unpublishes those entries) |
 | GET    | `/api/categories`           | Public      | List categories (`?activeOnly=true` to filter), sorted by `order` then `name` |
 | POST   | `/api/categories`           | Admin       | Create a category (name, description, image, order) |
 | PUT    | `/api/categories/:id`       | Admin       | Update a category / toggle active |
@@ -226,15 +229,22 @@ All of it comes from the same single API response already fetched for the accord
 
 ## Video Gallery
 
-Admin-managed videos, uploaded **directly from the browser to Cloudinary** (never through this server) via an unsigned upload preset — this sidesteps Vercel serverless request-size/timeout limits entirely, since the file never touches an Express function. Our server only ever stores the resulting `{url, publicId, thumbnail, duration}` metadata in MongoDB and, on delete, calls Cloudinary's Admin API (server-side secret key) to remove the asset.
+Admin-managed videos ("On the floor" section), each with a video from one of two sources, chosen from the **VideoPicker** modal in the Video form:
 
-**One-time setup**, per Cloudinary account:
+- **Video Library** ("Choose from Video Library" tab) — reuses a video already uploaded to Cloudinary, exactly like the Image Library lets a Product/Person/Category reuse an already-uploaded image. Uploads go **directly from the browser to Cloudinary** (never through this server) via an unsigned upload preset — this sidesteps Vercel serverless request-size/timeout limits entirely, since the file never touches an Express function. The server only ever stores the resulting `{url, publicId, thumbnail, duration}` metadata (`VideoAsset` model, `/api/video-assets`), and on delete calls Cloudinary's Admin API (server-side secret key) to remove the asset. The standalone **Video library** admin page (`/admin/video-library`) manages this the same way **Media library** (`/admin/media`) manages images: browse/search/upload/delete every video ever uploaded, independent of which Video Gallery entries currently use it.
+- **Paste URL** ("Paste URL" tab) — embeds a video hosted elsewhere instead of uploading a file. A Google Drive share link (`drive.google.com/file/d/FILE_ID/view`, `.../open?id=`, `.../uc?id=`) is automatically converted to Drive's `/preview` embed form and rendered in an `<iframe>` with Drive's own player controls — Drive doesn't serve raw, directly-playable video bytes from a share link, so a native `<video>` tag can't play it directly. Any other direct video URL (e.g. ending in `.mp4`/`.webm`) is played natively. See `client/src/admin/utils/videoEmbed.js`.
+
+Either way, the public site renders the result through the shared `VideoPlayer` component (`client/src/components/VideoPlayer.jsx`), which picks native `<video>` controls or the Drive iframe based on the saved `embedType`.
+
+**One-time setup**, per Cloudinary account (only needed for the Video Library / upload path — "Paste URL" needs no Cloudinary setup at all):
 1. Cloudinary dashboard → Settings → Upload → Upload presets → **Add upload preset**.
-2. Signing Mode: **Unsigned**. Restrict allowed formats to video types (mp4, webm, mov) if you want.
-3. Copy the cloud name and preset name into `client/.env` (`VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET`) — both are meant to be public, an unsigned preset name is not a secret by Cloudinary's own design.
-4. Copy your API key/secret into `server/.env` (`CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) — used only for server-side delete.
+2. Signing Mode: **Unsigned** (required — uploads go straight from the browser with no server-side secret).
+3. Resource Type: **Video** (or leave as **Auto** — either works, since uploads always go through Cloudinary's `/video/upload` endpoint, which forces `resource_type=video` regardless of the preset's own setting). Don't reuse a preset whose Resource Type is explicitly **Image** — Cloudinary rejects a video upload against it.
+4. Optionally restrict allowed formats to video types (mp4, webm, mov) to match this app's own client-side validation.
+5. Copy the cloud name and preset name into `client/.env` (`VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET`) — both are meant to be public, an unsigned preset name is not a secret by Cloudinary's own design.
+6. Copy your API key/secret into `server/.env` (`CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) — used only for server-side delete.
 
-Without this configured, the admin video uploader shows a clear inline error rather than failing silently; everything else in the app is unaffected.
+Without this configured, the Video Library's uploader shows a clear inline error ("Video uploads aren't configured yet…") rather than failing silently; "Paste URL" and everything else in the app are unaffected.
 
 ## Environment Variables
 

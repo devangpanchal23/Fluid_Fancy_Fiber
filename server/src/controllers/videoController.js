@@ -1,32 +1,9 @@
-import mongoose from "mongoose";
-import VideoMedia from "../models/VideoMedia.js";
-import { saveVideoLink } from "./videoMediaController.js";
 import Video from "../models/Video.js";
+import { deleteFromCloudinary, defaultThumbnail } from "../utils/cloudinaryVideo.js";
 
 const STATUSES = ["draft", "published"];
-
-// Assets belong to the library; content deletion never deletes shared video bytes.
-async function resolveSource(body) {
-  let media;
-  if (body.videoMedia) {
-    if (!mongoose.isValidObjectId(body.videoMedia)) throw Object.assign(new Error("Invalid video library selection."), { status: 400 });
-    media = await VideoMedia.findOne({ _id: body.videoMedia, deleting: { $ne: true } });
-    if (!media) throw Object.assign(new Error("Selected video is no longer available. Choose another video."), { status: 400 });
-  } else {
-    media = await saveVideoLink(body.url, body.title);
-  }
-  const linked = media.provider === "drive" || media.provider === "direct";
-  return { videoMedia: media._id, sourceType: linked ? media.provider : "library", url: media.url,
-    publicId: linked ? "" : media.publicId, duration: media.duration ?? null, thumbnail: body.thumbnail || (media.thumbnail?.url ? { url: media.thumbnail.url, alt: media.thumbnail.alt || "" } : null) };
-}
-async function claimSource(source, id) {
-  if (!source.videoMedia) return;
-  const claimed = await VideoMedia.findOneAndUpdate({ _id: source.videoMedia, deleting: { $ne: true } }, { $addToSet: { references: id } });
-  if (!claimed) throw Object.assign(new Error("Selected video is being deleted. Choose another video."), { status: 409 });
-}
-async function releaseSource(mediaId, id) {
-  if (mediaId) await VideoMedia.updateOne({ _id: mediaId }, { $pull: { references: id } });
-}
+const SOURCES = ["upload", "url"];
+const EMBED_TYPES = ["native", "iframe"];
 
 export async function listVideos(req, res, next) {
   try {
@@ -63,7 +40,6 @@ export async function listVideos(req, res, next) {
 export async function getVideo(req, res, next) {
   try {
     const isAdmin = Boolean(req.admin);
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: "Invalid video ID." });
     const video = await Video.findById(req.params.id);
     if (!video || (!isAdmin && video.status !== "published")) {
       return res.status(404).json({ success: false, message: "Video not found." });
@@ -74,65 +50,90 @@ export async function getVideo(req, res, next) {
   }
 }
 
-function validateVideoBody(body) {
+function validateVideoBody(body, { partial = false } = {}) {
   const errors = {};
-  if (typeof body.title !== "string" || !body.title.trim() || body.title.trim().length > 160) errors.title = "Enter a title of 1–160 characters.";
-  if (body.description != null && (typeof body.description !== "string" || body.description.length > 1000)) errors.description = "Description must be at most 1000 characters.";
+  const source = body.source || "upload";
+  if (!partial) {
+    if (!body.title || !String(body.title).trim()) errors.title = "Required.";
+    if (!body.url || !String(body.url).trim()) errors.url = "Required.";
+    // A pasted URL has no Cloudinary asset to speak of — only an upload
+    // (from the file picker or the Video Library) needs a publicId.
+    if (source === "upload" && (!body.publicId || !String(body.publicId).trim())) errors.publicId = "Required.";
+  }
+  if (body.source && !SOURCES.includes(body.source)) errors.source = "Invalid source.";
+  if (body.embedType && !EMBED_TYPES.includes(body.embedType)) errors.embedType = "Invalid embed type.";
   if (body.status && !STATUSES.includes(body.status)) errors.status = "Invalid status.";
-  if (body.thumbnail && (typeof body.thumbnail.url !== "string" || !/^(https:\/\/|\/uploads\/)/.test(body.thumbnail.url))) errors.thumbnail = "Invalid thumbnail URL.";
   return errors;
 }
 
 export async function createVideo(req, res, next) {
-  let source, id, saved = false;
   try {
     const body = req.body || {};
     const errors = validateVideoBody(body);
-    if (Object.keys(errors).length) return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
-    source = await resolveSource(body);
-    id = new mongoose.Types.ObjectId();
-    await claimSource(source, id);
-    const video = await Video.create({ _id: id, ...source, title: body.title.trim(), description: body.description || "", status: body.status || "draft", order: await Video.countDocuments() });
-    saved = true;
+    if (Object.keys(errors).length) {
+      return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
+    }
+
+    const source = body.source || "upload";
+    const count = await Video.countDocuments();
+    const video = await Video.create({
+      title: String(body.title).trim(),
+      description: body.description || "",
+      url: body.url,
+      publicId: source === "upload" ? body.publicId || "" : "",
+      source,
+      embedType: body.embedType || "native",
+      videoAsset: body.videoAsset || null,
+      thumbnail: body.thumbnail || (source === "upload" ? defaultThumbnail(body.publicId) : null),
+      duration: body.duration ?? null,
+      status: body.status || "draft",
+      order: body.order !== undefined ? body.order : count
+    });
+
     res.status(201).json({ success: true, data: { video } });
-  } catch (e) {
-    if (!saved && source?.videoMedia && id) await releaseSource(source.videoMedia, id).catch(() => {});
-    next(e);
+  } catch (err) {
+    next(err);
   }
 }
 
 export async function updateVideo(req, res, next) {
-  let source, video, previousMedia, saved = false;
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: "Invalid video ID." });
-    video = await Video.findById(req.params.id);
-    if (!video) return res.status(404).json({ success: false, message: "Video not found." });
-    const body = req.body || {};
-    const merged = { ...video.toObject(), ...body };
-    const errors = validateVideoBody(merged);
-    if (Object.keys(errors).length) return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
-    previousMedia = video.videoMedia;
-    if (Object.hasOwn(body, "url") || Object.hasOwn(body, "videoMedia")) {
-      // A URL-only API update explicitly switches away from the library.
-      if (Object.hasOwn(body, "url") && !Object.hasOwn(body, "videoMedia")) merged.videoMedia = null;
-      source = await resolveSource(merged);
-      await claimSource(source, video._id);
-      Object.assign(video, source);
+    const video = await Video.findById(req.params.id);
+    if (!video) {
+      return res.status(404).json({ success: false, message: "Video not found." });
     }
-    for (const field of ["title", "description", "thumbnail", "status"]) if (body[field] !== undefined) video[field] = body[field];
+    const body = req.body || {};
+    const errors = validateVideoBody(body, { partial: true });
+    if (Object.keys(errors).length) {
+      return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
+    }
+
+    const assignable = [
+      "title",
+      "description",
+      "url",
+      "publicId",
+      "source",
+      "embedType",
+      "videoAsset",
+      "thumbnail",
+      "duration",
+      "status",
+      "order"
+    ];
+    for (const field of assignable) {
+      if (body[field] !== undefined) video[field] = body[field];
+    }
+
     await video.save();
-    saved = true;
-    if (source && String(previousMedia) !== String(source.videoMedia)) await releaseSource(previousMedia, video._id);
     res.json({ success: true, data: { video } });
-  } catch (e) {
-    if (!saved && source?.videoMedia && String(previousMedia) !== String(source.videoMedia)) await releaseSource(source.videoMedia, video._id).catch(() => {});
-    next(e);
+  } catch (err) {
+    next(err);
   }
 }
 
 export async function reorderVideo(req, res, next) {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: "Invalid video ID." });
     const video = await Video.findById(req.params.id);
     if (!video) {
       return res.status(404).json({ success: false, message: "Video not found." });
@@ -159,13 +160,19 @@ export async function reorderVideo(req, res, next) {
 
 export async function deleteVideo(req, res, next) {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: "Invalid video ID." });
     const video = await Video.findById(req.params.id);
     if (!video) {
       return res.status(404).json({ success: false, message: "Video not found." });
     }
+    // Only remove the Cloudinary asset if it isn't tracked in the Video
+    // Library — a library-tracked asset may be reused by other Video Gallery
+    // entries, and is only ever deleted from the library itself
+    // (videoAssetController.deleteVideoAsset), same as Media never gets
+    // deleted just because one Product stops using it.
+    if (!video.videoAsset && video.source === "upload") {
+      await deleteFromCloudinary(video.publicId);
+    }
     await video.deleteOne();
-    await releaseSource(video.videoMedia, video._id);
     res.json({ success: true, data: null });
   } catch (err) {
     next(err);

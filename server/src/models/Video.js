@@ -5,21 +5,32 @@ const imageSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Content references a library asset or a validated external video URL.
+// A video's bytes either live on Cloudinary (uploaded from the admin's
+// browser via an unsigned preset, or picked from the Video Library — see
+// client/src/admin/utils/cloudinaryVideoUpload.js and VideoPicker.jsx) or
+// stay wherever the admin pasted a URL from (e.g. Google Drive) — `source`
+// tells the two apart, since only an "upload" has a Cloudinary `publicId`
+// this server can delete. `embedType` tells the client how to render `url`:
+// "native" plays directly in an HTML5 <video> tag, "iframe" (e.g. a Google
+// Drive share link, converted to its /preview embed form) needs an <iframe>
+// instead, since Drive doesn't serve raw playable video bytes from a share
+// link. `videoAsset` links back to the Video Library entry this was picked
+// from, if any, so deleting that entry can find every place it's still used.
 const videoSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 160 },
     description: { type: String, trim: true, maxlength: 1000 },
     url: { type: String, required: true, trim: true, maxlength: 2000 },
-    sourceType: { type: String, enum: ["direct", "drive", "library"], default: "direct" },
-    videoMedia: { type: mongoose.Schema.Types.ObjectId, ref: "VideoMedia", default: null },
-    publicId: { type: String, default: "", trim: true, maxlength: 300 },
+    publicId: { type: String, trim: true, maxlength: 300, default: "" },
+    source: { type: String, enum: ["upload", "url"], default: "upload" },
+    embedType: { type: String, enum: ["native", "iframe"], default: "native" },
+    videoAsset: { type: mongoose.Schema.Types.ObjectId, ref: "VideoAsset", default: null },
     thumbnail: { type: imageSchema, default: null },
     duration: { type: Number, default: null },
     status: { type: String, enum: ["draft", "published"], default: "draft", index: true },
     order: { type: Number, default: 0 }
   },
-  { timestamps: true, optimisticConcurrency: true }
+  { timestamps: true }
 );
 
 videoSchema.index({ status: 1, order: 1 });

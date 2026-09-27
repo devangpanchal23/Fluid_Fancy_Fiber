@@ -94,6 +94,18 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     return { status: res.status, data: await res.json().catch(() => null) };
   }
 
+  async function putChunk(uploadId, index, bytes, isLast) {
+    const form = new FormData();
+    form.append("chunk", new Blob([bytes], { type: "video/mp4" }));
+    form.append("isLast", String(isLast));
+    const res = await fetch(`${base}/api/video-assets/uploads/${uploadId}/chunks/${index}`, {
+      method: "PUT",
+      headers: cookie ? { Cookie: cookie } : undefined,
+      body: form
+    });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  }
+
   await t.test("rejects unauthenticated access to protected routes", async () => {
     const r1 = await req("/api/admin/me");
     assert.equal(r1.status, 401);
@@ -349,11 +361,105 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     assert.ok(!list.data.data.items.some((p) => p._id === personId));
   });
 
+  await t.test("chunked video upload: rejects a malformed (wrong-size, non-final) chunk", async () => {
+    const start = await req("/api/video-assets/uploads", { method: "POST", body: { mimeType: "video/mp4", size: 9_000_000 } });
+    assert.equal(start.status, 201);
+    assert.equal(start.data.data.chunkSize, 4 * 1024 * 1024);
+
+    const bad = await putChunk(start.data.data.uploadId, 0, new Uint8Array(1000), false);
+    assert.equal(bad.status, 400, "a non-final chunk that isn't exactly chunkSize must be rejected");
+
+    await req(`/api/video-assets/uploads/${start.data.data.uploadId}`, { method: "DELETE" });
+  });
+
+  await t.test("chunked video upload: abort discards its chunks", async () => {
+    const start = await req("/api/video-assets/uploads", { method: "POST", body: { mimeType: "video/mp4", size: 500 } });
+    const uploadId = start.data.data.uploadId;
+    const ok = await putChunk(uploadId, 0, new Uint8Array(500), true);
+    assert.equal(ok.status, 200);
+
+    const before = await mongoose.connection.db
+      .collection("videos.chunks")
+      .countDocuments({ files_id: new mongoose.Types.ObjectId(uploadId) });
+    assert.equal(before, 1);
+
+    const aborted = await req(`/api/video-assets/uploads/${uploadId}`, { method: "DELETE" });
+    assert.equal(aborted.status, 200);
+
+    const after = await mongoose.connection.db
+      .collection("videos.chunks")
+      .countDocuments({ files_id: new mongoose.Types.ObjectId(uploadId) });
+    assert.equal(after, 0, "aborting an upload must discard every chunk already written");
+  });
+
+  let videoAssetId;
+  let videoAssetGridFsId;
+  await t.test("chunked video upload: completes a single-chunk upload and registers a Video Library entry", async () => {
+    const bytes = new Uint8Array(1000).fill(7);
+    const start = await req("/api/video-assets/uploads", { method: "POST", body: { mimeType: "video/mp4", size: bytes.length } });
+    const uploadId = start.data.data.uploadId;
+
+    const chunkRes = await putChunk(uploadId, 0, bytes, true);
+    assert.equal(chunkRes.status, 200);
+
+    const complete = await req(`/api/video-assets/uploads/${uploadId}/complete`, {
+      method: "POST",
+      body: { originalName: "test-clip.mp4", mimeType: "video/mp4", size: bytes.length, totalChunks: 1, duration: 4.2 }
+    });
+    assert.equal(complete.status, 201);
+    videoAssetId = complete.data.data.videoAsset._id;
+    videoAssetGridFsId = complete.data.data.videoAsset.gridFsId;
+    assert.equal(complete.data.data.videoAsset.url, `/video-uploads/${uploadId}`);
+  });
+
+  await t.test("streams the uploaded video back, with working HTTP Range support", async () => {
+    const full = await fetch(`${base}/video-uploads/${videoAssetGridFsId}`);
+    assert.equal(full.status, 200);
+    assert.equal(full.headers.get("content-length"), "1000");
+    const fullBytes = new Uint8Array(await full.arrayBuffer());
+    assert.equal(fullBytes.length, 1000);
+    assert.equal(fullBytes[0], 7);
+
+    const partial = await fetch(`${base}/video-uploads/${videoAssetGridFsId}`, { headers: { Range: "bytes=0-499" } });
+    assert.equal(partial.status, 206);
+    assert.equal(partial.headers.get("content-range"), "bytes 0-499/1000");
+    const partialBytes = new Uint8Array(await partial.arrayBuffer());
+    assert.equal(partialBytes.length, 500);
+  });
+
+  await t.test("appears in the Video Library list", async () => {
+    const r = await req("/api/video-assets?limit=50");
+    assert.equal(r.status, 200);
+    assert.ok(r.data.data.items.some((a) => a._id === videoAssetId));
+  });
+
+  await t.test("deleting a Video Library entry leaves no orphaned GridFS chunks or metadata", async () => {
+    const del = await req(`/api/video-assets/${videoAssetId}`, { method: "DELETE" });
+    assert.equal(del.status, 200);
+
+    const filesId = new mongoose.Types.ObjectId(videoAssetGridFsId);
+    const [chunkCount, fileCount] = await Promise.all([
+      mongoose.connection.db.collection("videos.chunks").countDocuments({ files_id: filesId }),
+      mongoose.connection.db.collection("videos.files").countDocuments({ _id: filesId })
+    ]);
+    assert.equal(chunkCount, 0, "deleting a video asset must not leave orphaned chunk documents");
+    assert.equal(fileCount, 0, "deleting a video asset must remove its GridFS metadata document");
+
+    const stream = await fetch(`${base}/video-uploads/${videoAssetGridFsId}`);
+    assert.equal(stream.status, 404);
+  });
+
   let videoId;
-  await t.test("creates a video (metadata only — no real Cloudinary upload in tests)", async () => {
+  await t.test("creates a video (Google Drive source — no chunked upload needed for this CRUD test)", async () => {
     const r = await req("/api/videos", {
       method: "POST",
-      body: { title: "Test Video", url: "https://res.cloudinary.com/demo/video/upload/test.mp4", publicId: "test-video-public-id" }
+      body: {
+        title: "Test Video",
+        url: "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/preview",
+        source: "drive",
+        embedType: "iframe",
+        driveFileId: "1AbCdEfGhIjKlMnOpQrSt"
+      }
     });
     assert.equal(r.status, 201);
     videoId = r.data.data.video._id;
@@ -380,7 +486,7 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     assert.ok(r.data.data.items.some((v) => v._id === videoId), "published video should be public");
   });
 
-  await t.test("deletes a video (Cloudinary deletion best-effort without credentials)", async () => {
+  await t.test("deletes a video", async () => {
     const r = await req(`/api/videos/${videoId}`, { method: "DELETE" });
     assert.equal(r.status, 200);
     const list = await req("/api/videos?limit=50");

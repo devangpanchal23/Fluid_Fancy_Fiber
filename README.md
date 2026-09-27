@@ -38,7 +38,7 @@ The catalogue shown on the public site is now backed by MongoDB — products are
 - **Dashboard** — total/active/draft product counts, total variants, total categories, total videos, total people, total enquiries, recent products, recent enquiries, quick actions.
 - **Product/Type CMS** — CRUD with search, status/category filters, sort, pagination, reordering; Draft/Active/Archived status; Featured toggle. Each Type links to its own **Variant** manager for SKU, dynamic key-value specifications, and a reorderable, real file-upload image gallery with a "Make primary" action (see [Product Hierarchy](#product-hierarchy) and [Image Uploads](#image-uploads)).
 - **Category management** — add/rename/activate/deactivate/delete/reorder, with an uploaded image per category, and delete blocked while any product still references the category.
-- **Video Gallery management** — pick a video from the **Video Library** (direct-to-Cloudinary upload with a real progress bar, or reuse a previously-uploaded one) or **paste a URL** (Google Drive share links auto-convert to an embeddable form), plus title/description, optional thumbnail override, publish/draft toggle, reordering, delete (see [Video Gallery](#video-gallery)).
+- **Video Gallery management** — pick a video from the **Video Library** (local upload with a real progress bar, stored in this same MongoDB database — no third-party media service — or reuse a previously-uploaded one) or **paste a Google Drive share link**, plus title/description, optional thumbnail override, publish/draft toggle, reordering, delete (see [Video Gallery](#video-gallery)).
 - **People/Team management** — full CRUD (name, designation, email, phone, bio, uploaded photo, links, active/inactive, display order) with search and up/down reordering; the public People section renders whatever's here.
 - **Cone library management** — full CRUD for the "Cone library" grid (product image picked from the Media Library or uploaded, product name, product details), all three required, with up/down reordering; the public Cone library section renders whatever's here. On a fresh database run `npm run seed:cone-library --prefix server` once to load the six original cards.
 - **Enquiry management** — the existing contact-form and spec-sheet submissions, now listable/searchable/paginated with a status workflow (`New → In Progress → Contacted → Closed → Archived`) and delete.
@@ -167,13 +167,17 @@ All responses use `{ success: true, data }` or `{ success: false, message, error
 | DELETE | `/api/variants/:id`         | Admin       | Delete permanently |
 | GET    | `/api/videos`               | Public\*    | List videos — `?status=&page=&limit=&sort=`. Anonymous callers always get `status=published` only |
 | GET    | `/api/videos/:id`           | Public\*    | Get one video (404 if not `published` and not an admin) |
-| POST   | `/api/videos`               | Admin       | Save a video's metadata (title, description, `url`, `source` (`upload`/`url`), `embedType` (`native`/`iframe`), Cloudinary `publicId`/`videoAsset` when uploaded, thumbnail, duration) — see [Video Gallery](#video-gallery) |
+| POST   | `/api/videos`               | Admin       | Save a video's metadata (title, description, `url`, `source` (`upload`/`drive`), `embedType` (`native`/`iframe`), `videoAsset` or `driveFileId`, thumbnail, duration) — see [Video Gallery](#video-gallery) |
 | PUT    | `/api/videos/:id`           | Admin       | Update a video / change its status |
 | PUT    | `/api/videos/:id/reorder`   | Admin       | Swap `order` with the previous/next video |
-| DELETE | `/api/videos/:id`           | Admin       | Delete the record. Only deletes the Cloudinary asset too if it isn't tracked in the Video Library (a library-tracked asset is only ever deleted from the library itself) |
+| DELETE | `/api/videos/:id`           | Admin       | Delete the record. The underlying file (if any) is only ever deleted from the Video Library itself |
 | GET    | `/api/video-assets`         | Admin       | List the Video Library — `?q=&page=&limit=` |
-| POST   | `/api/video-assets`         | Admin       | Register a video already uploaded client-side to Cloudinary (`url`, `publicId`, `originalName`, `mimeType`, `size`, `duration`, `thumbnail`) |
-| DELETE | `/api/video-assets/:id`     | Admin       | Delete a library video + its Cloudinary asset. `409` while any Video Gallery entry still uses it, unless `?force=true` (which also unpublishes those entries) |
+| POST   | `/api/video-assets/uploads` | Admin       | Start a chunked upload — `{ mimeType, size }` → `{ uploadId, chunkSize }` |
+| PUT    | `/api/video-assets/uploads/:uploadId/chunks/:index` | Admin | Upload one fixed-size chunk (multipart, field `chunk`) |
+| POST   | `/api/video-assets/uploads/:uploadId/complete` | Admin | Verify all chunks arrived intact and register the finished file as a Video Library entry |
+| DELETE | `/api/video-assets/uploads/:uploadId` | Admin | Abort an in-progress upload and discard its chunks |
+| DELETE | `/api/video-assets/:id`     | Admin       | Delete a library video and its file. `409` while any Video Gallery entry still uses it, unless `?force=true` (which also unpublishes those entries) |
+| GET    | `/video-uploads/:id`        | Public      | Stream a locally-uploaded video's bytes (HTTP Range-aware, for seeking) |
 | GET    | `/api/categories`           | Public      | List categories (`?activeOnly=true` to filter), sorted by `order` then `name` |
 | POST   | `/api/categories`           | Admin       | Create a category (name, description, image, order) |
 | PUT    | `/api/categories/:id`       | Admin       | Update a category / toggle active |
@@ -229,22 +233,16 @@ All of it comes from the same single API response already fetched for the accord
 
 ## Video Gallery
 
-Admin-managed videos ("On the floor" section), each with a video from one of two sources, chosen from the **VideoPicker** modal in the Video form:
+Admin-managed videos ("On the floor" section), each with a video from exactly one of two sources, chosen from the **VideoPicker** modal in the Video form — no third-party media service (Cloudinary, S3, etc.) is used anywhere in this path:
 
-- **Video Library** ("Choose from Video Library" tab) — reuses a video already uploaded to Cloudinary, exactly like the Image Library lets a Product/Person/Category reuse an already-uploaded image. Uploads go **directly from the browser to Cloudinary** (never through this server) via an unsigned upload preset — this sidesteps Vercel serverless request-size/timeout limits entirely, since the file never touches an Express function. The server only ever stores the resulting `{url, publicId, thumbnail, duration}` metadata (`VideoAsset` model, `/api/video-assets`), and on delete calls Cloudinary's Admin API (server-side secret key) to remove the asset. The standalone **Video library** admin page (`/admin/video-library`) manages this the same way **Media library** (`/admin/media`) manages images: browse/search/upload/delete every video ever uploaded, independent of which Video Gallery entries currently use it.
-- **Paste URL** ("Paste URL" tab) — embeds a video hosted elsewhere instead of uploading a file. A Google Drive share link (`drive.google.com/file/d/FILE_ID/view`, `.../open?id=`, `.../uc?id=`) is automatically converted to Drive's `/preview` embed form and rendered in an `<iframe>` with Drive's own player controls — Drive doesn't serve raw, directly-playable video bytes from a share link, so a native `<video>` tag can't play it directly. Any other direct video URL (e.g. ending in `.mp4`/`.webm`) is played natively. See `client/src/admin/utils/videoEmbed.js`.
+- **Video Library** ("Choose from Video Library" tab) — reuses a video already uploaded, exactly like the Image Library lets a Product/Person/Category reuse an already-uploaded image. The file itself lives in this same MongoDB database via **GridFS** (`server/src/utils/videoStorage.js`) — MongoDB's own built-in mechanism for storing files larger than its 16MB single-document limit, not a third-party service. The standalone **Video library** admin page (`/admin/video-library`) manages this the same way **Media library** (`/admin/media`) manages images: browse/search/upload/delete every video ever uploaded, independent of which Video Gallery entries currently use it. Streamed back publicly from `GET /video-uploads/:id`, with HTTP Range support so seeking/scrubbing works.
+- **Paste Google Drive Link** ("Paste Google Drive Link" tab) — embeds a video already hosted on Google Drive instead of uploading a file. A Drive share link (`drive.google.com/file/d/FILE_ID/view`, `.../open?id=`, `.../uc?id=`) is automatically converted to Drive's `/preview` embed form and rendered in an `<iframe>` with Drive's own player controls — Drive doesn't serve raw, directly-playable video bytes from a share link, so a native `<video>` tag can't play it directly. Any other host is rejected at input time with a clear inline error — Google Drive is the only supported "paste a link" source. See `client/src/admin/utils/videoEmbed.js`.
 
-Either way, the public site renders the result through the shared `VideoPlayer` component (`client/src/components/VideoPlayer.jsx`), which picks native `<video>` controls or the Drive iframe based on the saved `embedType`.
+Either way, the public site renders the result through the shared `VideoPlayer` component (`client/src/components/VideoPlayer.jsx`), which picks native `<video>` controls or the Drive iframe based on the saved `embedType`, shows a themed loading placeholder until the first frame/iframe paints, and replaces the whole player with one clean fallback panel ("This video couldn't be loaded" + an "Open in Google Drive" button where applicable) if it genuinely fails to load. A Drive embed also carries a small, permanently-present "Open in Google Drive ↗" link, since Drive's own `/preview` page can render its own in-frame error for a private/restricted file (e.g. "You need permission") — that content is cross-origin and invisible to our own error handling, so the escape hatch is not conditional on detecting a failure.
 
-**One-time setup**, per Cloudinary account (only needed for the Video Library / upload path — "Paste URL" needs no Cloudinary setup at all):
-1. Cloudinary dashboard → Settings → Upload → Upload presets → **Add upload preset**.
-2. Signing Mode: **Unsigned** (required — uploads go straight from the browser with no server-side secret).
-3. Resource Type: **Video** (or leave as **Auto** — either works, since uploads always go through Cloudinary's `/video/upload` endpoint, which forces `resource_type=video` regardless of the preset's own setting). Don't reuse a preset whose Resource Type is explicitly **Image** — Cloudinary rejects a video upload against it.
-4. Optionally restrict allowed formats to video types (mp4, webm, mov) to match this app's own client-side validation.
-5. Copy the cloud name and preset name into `client/.env` (`VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET`) — both are meant to be public, an unsigned preset name is not a secret by Cloudinary's own design.
-6. Copy your API key/secret into `server/.env` (`CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) — used only for server-side delete.
+**No configuration is needed for either path** — no env vars, no third-party dashboard, no API keys. This is the one deliberate architectural trade-off worth understanding:
 
-Without this configured, the Video Library's uploader shows a clear inline error ("Video uploads aren't configured yet…") rather than failing silently; "Paste URL" and everything else in the app are unaffected.
+Vercel serverless functions (this app's deployment target — see `vercel.json`) hard-cap request/response payloads at ~4.5MB, far below any real video file, and have no persistent filesystem for plain disk storage to survive on. Local video upload is therefore implemented as a **chunked upload**: the browser splits the file into fixed-size pieces (`client/src/admin/utils/localVideoUpload.js`, default 4MB, server-confirmed) and PUTs them one at a time to `POST /api/video-assets/uploads` → `PUT .../uploads/:uploadId/chunks/:index` → `POST .../uploads/:uploadId/complete`; the server writes each chunk directly into GridFS's own `videos.chunks` collection as it arrives, so the `complete` step only has to insert one small metadata document regardless of the file's total size. Deleting a Video Library entry (`DELETE /api/video-assets/:id`) removes both the GridFS metadata and every one of its chunks in a single call, so no orphaned chunk documents are left behind. A hard `MAX_VIDEO_SIZE` (200MB, `server/src/controllers/videoAssetController.js`) keeps a single upload's total chunk-PUT time comfortably inside a serverless function's execution window on a slow connection — raise it with care.
 
 ## Environment Variables
 
@@ -253,8 +251,6 @@ Without this configured, the Video Library's uploader shows a clear inline error
 | Variable         | Description                                  | Example                        |
 |------------------|-----------------------------------------------|---------------------------------|
 | `VITE_API_URL`   | Base URL of the backend API                  | `http://localhost:5001/api`    |
-| `VITE_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name, for direct browser video uploads (see [Video Gallery](#video-gallery)) | `your-cloud-name` |
-| `VITE_CLOUDINARY_UPLOAD_PRESET` | An *unsigned* Cloudinary upload preset name (create it in the Cloudinary dashboard) | `fluid-fibers-videos` |
 
 **`server/.env`** (copy from `server/.env.example`)
 
@@ -271,7 +267,6 @@ Without this configured, the Video Library's uploader shows a clear inline error
 | `EMAIL_USER`     | Gmail address used to send contact-form/spec-sheet notifications (optional — see [Email Notifications](#email-notifications)) | `you@gmail.com` |
 | `EMAIL_PASS`     | A Gmail **App Password** for that account, not its regular password. Quote it — it contains spaces | `"abcd efgh ijkl mnop"` |
 | `NOTIFY_EMAIL`   | Who receives the notification. Defaults to `EMAIL_USER` if unset | `fluidfancyenterprisepvtltd@gmail.com` |
-| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Used only to delete a video from Cloudinary when it's deleted in the admin (optional — if unset, deleting a video still removes the MongoDB record but leaves the file on Cloudinary, logged as a warning) | from the Cloudinary dashboard's Access Keys |
 
 `.env` files are git-ignored; only `.env.example` files are committed. No real credentials are present in this repository. `ADMIN_EMAIL`/`ADMIN_PASSWORD` are read only by the one-off seed script, not at request time — safe to remove from `.env` after seeding.
 
@@ -398,7 +393,7 @@ Setup: enable 2-Step Verification on the sending Gmail account, generate an **Ap
 
 ## Image Uploads
 
-The admin CMS uploads image files directly (Variants, Categories, People, video thumbnails) via `POST /api/uploads` (multipart, field name `image`, JPEG/PNG/WEBP/GIF only, 5MB max — enforced both client- and server-side). Files are currently saved to `server/uploads/` and served statically from `/uploads/<filename>`; `Variant.images`/`Category.image`/`Person.image`/`Video.thumbnail` store the resulting `{ url, alt }` (never raw binary in MongoDB, per the storage requirement). Video *files themselves* don't go through this endpoint at all — see [Video Gallery](#video-gallery).
+The admin CMS uploads image files directly (Variants, Categories, People, video thumbnails) via `POST /api/uploads` (multipart, field name `image`, JPEG/PNG/WEBP/GIF only, 5MB max — enforced both client- and server-side). The bytes are stored directly on a `Media` document in MongoDB (see `imageStorage.js`) and served back from `GET /uploads/<filename>`; `Variant.images`/`Category.image`/`Person.image`/`Video.thumbnail` store the resulting `{ url, alt }`. Video *files themselves* don't go through this endpoint at all — they're far larger than the 5MB image cap, so they go through the Video Library's own GridFS-backed chunked upload instead — see [Video Gallery](#video-gallery).
 
 **This works in local dev and on traditional (non-serverless) hosting, but not durably on Vercel production** — serverless functions have no persistent or shared filesystem, so a file uploaded in one invocation is not guaranteed to be there for the next. The storage layer is deliberately isolated in `server/src/utils/imageStorage.js` (`saveImage`/`deleteImage`) so swapping in a real provider (Cloudinary, Vercel Blob, S3, Supabase Storage, …) before going live is a change to that one file only — every controller and admin component already only depends on the `{ url, filename }` shape it returns.
 

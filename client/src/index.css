@@ -1461,9 +1461,15 @@ textarea::placeholder {
 
 /* ---------- video gallery ---------- */
 
+/* Card size scales fluidly with the viewport (clamp, not a fixed value or a
+   handful of breakpoint jumps) so it reads as the same "right" size from a
+   phone up to an ultra-wide monitor: big enough that a Drive embed's own
+   player chrome (seek bar, volume, settings, fullscreen) has comfortable
+   room to be readable and tappable, never so big it dwarfs the rest of the
+   section on a large screen. */
 .ff-video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, clamp(17rem, 12vw + 12rem, 26rem)), 1fr));
   gap: clamp(14px, 1.6vw, 24px);
   margin-top: clamp(20px, 3vh, 32px);
 }
@@ -1471,7 +1477,7 @@ textarea::placeholder {
   margin: 0;
   min-width: 0;
   width: 100%;
-  max-width: 28rem;
+  max-width: clamp(20rem, 16vw + 15rem, 38rem);
   justify-self: center;
   overflow-wrap: anywhere;
 }
@@ -1549,15 +1555,33 @@ textarea::placeholder {
 }
 
 /* ---------- shared video player (VideoPlayer.jsx) ---------- */
-/* Native <video> and the Drive-iframe fallback both need to fill whatever
-   box the caller sizes (see .ff-video-frame above and
-   .ff-video-form-preview / .ff-video-url-preview in admin.css) — the
-   wrapper below is what makes the iframe case behave the same way a native
-   <video> already does (object-fit: cover via width/height: 100%). */
+/* Both the native <video> case and the Drive-iframe case size themselves
+   purely from their own width (via aspect-ratio) rather than depending on
+   a caller-provided fixed height — this is what lets the same component
+   drop into a fixed-aspect public gallery card, a fixed-width admin
+   preview box, and a fluid picker preview without any caller-side height
+   bookkeeping. `className` (from the caller) sizes the outer wrap's width
+   only; height always follows content. */
+.ff-video-embed-wrap,
+.ff-video-native-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.ff-video-native-wrap {
+  /* Anchors the loading spinner overlay (position: absolute; inset: 0),
+     which needs a positioned ancestor to size against — the <video> below
+     it (always rendered, just visually covered while !loaded) gives this
+     wrap a definite height via its own aspect-ratio even before playback
+     data has arrived. */
+  position: relative;
+}
 .ff-video-embed {
   position: relative;
   width: 100%;
-  height: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
 }
 .ff-video-embed iframe {
   position: absolute;
@@ -1568,10 +1592,86 @@ textarea::placeholder {
 }
 .ff-video-native {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   display: block;
   background: #000;
+}
+
+/* Shown until the video's first frame (native) or the Drive iframe's own
+   onLoad fires — a spinner alone reads as "stuck" on a slow connection, so
+   this pairs with a dark themed placeholder instead of a blank white box. */
+.ff-video-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #17140f;
+  z-index: 1;
+}
+.ff-video-loading::after {
+  content: "";
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(233, 224, 209, 0.25);
+  border-top-color: var(--ff-accent);
+  animation: ff-video-spin 800ms linear infinite;
+}
+@keyframes ff-video-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The one clean fallback panel for a video that genuinely failed to load
+   (network error, deleted/missing file) — see VideoPlayer.jsx. Replaces the
+   whole embed rather than appearing alongside it, so there is never a
+   half-broken player showing through underneath. */
+.ff-video-fallback {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  background: #17140f;
+  color: var(--ff-bg);
+  text-align: center;
+}
+.ff-video-fallback svg {
+  opacity: 0.6;
+}
+.ff-video-fallback p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(233, 224, 209, 0.8);
+}
+
+/* Persistent escape hatch for a Drive embed — Drive's own /preview page can
+   render its own in-frame error (e.g. a private/restricted file) that is
+   cross-origin and invisible to us, so this link is always present rather
+   than conditional on a detectable failure (see VideoPlayer.jsx). Placed
+   as a normal-flow line BELOW the iframe, not overlaid on top of it —
+   Drive's own player chrome isn't confined to one corner (it draws a
+   bottom control bar in some states and a top scrub/progress bar in
+   others), so there is no fixed corner that's reliably clear of it; a
+   sibling element below the frame can never collide with it. */
+.ff-video-drive-link {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ff-muted);
+  text-decoration: none;
+}
+.ff-video-drive-link:hover,
+.ff-video-drive-link:focus-visible {
+  color: var(--ff-ink);
+  text-decoration: underline;
 }
 
 /* ---------- process ---------- */

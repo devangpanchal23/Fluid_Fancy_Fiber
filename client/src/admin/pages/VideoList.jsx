@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
+import { resolveUploadUrl } from "../../apiBase";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function VideoList() {
@@ -85,7 +86,7 @@ export default function VideoList() {
                 <tr key={v._id}>
                   <td>
                     {v.thumbnail?.url ? (
-                      <img src={v.thumbnail.url} alt="" className="ff-admin-table-thumb" />
+                      <img src={resolveUploadUrl(v.thumbnail.url)} alt="" className="ff-admin-table-thumb" />
                     ) : (
                       <span className="ff-admin-table-thumb ff-admin-table-thumb--empty" />
                     )}

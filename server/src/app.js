@@ -16,6 +16,7 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { connectDB, isDbConnected } from "./config/db.js";
 import { serveImage } from "./controllers/uploadController.js";
+import { streamVideo } from "./controllers/videoStreamController.js";
 
 const configuredOrigins = (process.env.CLIENT_ORIGIN || "")
   .split(",")
@@ -66,6 +67,11 @@ app.use(cookieParser());
 // this Express app because vercel.json explicitly rewrites /uploads/(.*) to
 // the /api function; without that rewrite it 404s against the static site.
 app.get("/uploads/:filename", serveImage);
+
+// Serves locally-uploaded videos out of MongoDB via GridFS (see
+// server/src/utils/videoStorage.js) — same Vercel rewrite requirement as
+// /uploads/:filename above (see vercel.json).
+app.get("/video-uploads/:id", streamVideo);
 
 app.get("/api/health", (req, res) => {
   const dbConnected = isDbConnected();

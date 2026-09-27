@@ -1,22 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import {
-  validateVideoFile,
-  uploadVideoToCloudinary,
-  isCloudinaryVideoConfigured,
-  VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE,
-  ALLOWED_VIDEO_TYPES
-} from "../utils/cloudinaryVideoUpload";
+import { validateVideoFile, uploadVideoLocally, ALLOWED_VIDEO_TYPES } from "../utils/localVideoUpload";
 import { parseVideoUrl } from "../utils/videoEmbed";
+import { resolveUploadUrl } from "../../apiBase";
 import VideoPlayer from "../../components/VideoPlayer";
-
-function formatSize(bytes) {
-  if (!bytes && bytes !== 0) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function formatDuration(seconds) {
   if (!seconds && seconds !== 0) return "";
@@ -27,12 +15,12 @@ function formatDuration(seconds) {
 
 // Modal for choosing the video behind a Video Gallery entry — mirrors
 // MediaPicker's "choose from library" flow, with a second tab for pasting a
-// URL directly (e.g. a Google Drive share link) instead of uploading a file.
+// Google Drive share link instead of uploading a file. These are the only
+// two supported video sources.
 export default function VideoPicker({ open, onClose, onConfirm }) {
   const toast = useToast();
-  const configured = isCloudinaryVideoConfigured();
   const inputRef = useRef(null);
-  const [tab, setTab] = useState(configured ? "library" : "url");
+  const [tab, setTab] = useState("library");
 
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -50,7 +38,7 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
 
   useEffect(() => {
     if (!open) return;
-    setTab(configured ? "library" : "url");
+    setTab("library");
     setSelectedAsset(null);
     setQ("");
     setPage(1);
@@ -91,10 +79,6 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
   if (!open) return null;
 
   async function handleUpload(fileList) {
-    if (!configured) {
-      toast.error(VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE);
-      return;
-    }
     const files = Array.from(fileList);
     for (const file of files) {
       const validationError = validateVideoFile(file);
@@ -105,8 +89,7 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
       setUploading(true);
       setProgress(0);
       try {
-        const uploaded = await uploadVideoToCloudinary(file, setProgress);
-        const { videoAsset } = await api.post("/video-assets", uploaded);
+        const videoAsset = await uploadVideoLocally(file, setProgress);
         setItems((it) => [videoAsset, ...it]);
         setTotal((t) => t + 1);
         setSelectedAsset(videoAsset);
@@ -131,8 +114,7 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
     setUrlPreview(null);
   }
 
-  function onUrlSubmit(e) {
-    e.preventDefault();
+  function validateUrl() {
     const result = parseVideoUrl(urlInput);
     if (result.error) {
       setUrlError(result.error);
@@ -141,6 +123,19 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
     }
     setUrlError("");
     setUrlPreview(result);
+  }
+
+  function onUrlKeyDown(e) {
+    if (e.key !== "Enter") return;
+    // This picker always renders inside VideoForm's own <form> (the Save/
+    // Publish form) — a nested <form> here would be invalid HTML and, in
+    // practice, made Enter (or clicking a type="submit" button) trigger a
+    // real native form submission instead of just validating the link:
+    // the page would hard-navigate/refresh, losing the pick before it was
+    // ever confirmed. Handling Enter directly on the input, with no <form>
+    // element at all, avoids that entirely.
+    e.preventDefault();
+    validateUrl();
   }
 
   function confirm() {
@@ -152,9 +147,9 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
       onConfirm({
         source: "upload",
         url: selectedAsset.url,
-        publicId: selectedAsset.publicId,
         embedType: "native",
         videoAsset: selectedAsset._id,
+        driveFileId: "",
         duration: selectedAsset.duration,
         thumbnail: selectedAsset.thumbnail
       });
@@ -163,15 +158,15 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
     }
 
     if (!urlPreview) {
-      setUrlError(urlInput.trim() ? "Press Enter to validate the link first." : "Paste a video URL first.");
+      setUrlError(urlInput.trim() ? "Press Enter to validate the link first." : "Paste a Google Drive share link first.");
       return;
     }
     onConfirm({
-      source: "url",
+      source: "drive",
       url: urlPreview.url,
-      publicId: "",
       embedType: urlPreview.embedType,
       videoAsset: null,
+      driveFileId: urlPreview.driveFileId,
       duration: null,
       thumbnail: null
     });
@@ -204,7 +199,7 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
             className={`ff-picker-tab${tab === "library" ? " is-active" : ""}`}
             onClick={() => setTab("library")}
           >
-            Video library
+            Choose from Video Library
           </button>
           <button
             type="button"
@@ -213,21 +208,12 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
             className={`ff-picker-tab${tab === "url" ? " is-active" : ""}`}
             onClick={() => setTab("url")}
           >
-            Paste URL
+            Paste Google Drive Link
           </button>
         </div>
 
         {tab === "library" ? (
           <>
-            {!configured && (
-              <div className="ff-admin-config-banner" role="alert">
-                <span>
-                  <strong>Video uploads aren't configured yet.</strong>
-                  Set <code>VITE_CLOUDINARY_CLOUD_NAME</code> and <code>VITE_CLOUDINARY_UPLOAD_PRESET</code> in <code>client/.env</code>, then
-                  restart the dev server. Use "Paste URL" in the meantime.
-                </span>
-              </div>
-            )}
             <div className="ff-admin-toolbar">
               <input
                 type="search"
@@ -239,24 +225,11 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
                 }}
                 className="ff-admin-search"
               />
-              <button
-                type="button"
-                className="ff-btn ff-btn-ghost"
-                onClick={() => inputRef.current?.click()}
-                disabled={uploading || !configured}
-                title={configured ? undefined : VIDEO_UPLOAD_NOT_CONFIGURED_MESSAGE}
-              >
+              <button type="button" className="ff-btn ff-btn-ghost" onClick={() => inputRef.current?.click()} disabled={uploading}>
                 {uploading && <span className="ff-btn-spinner" />}
                 <span>{uploading ? `Uploading… ${progress}%` : "+ Upload new video"}</span>
               </button>
-              <input
-                ref={inputRef}
-                type="file"
-                accept={ALLOWED_VIDEO_TYPES.join(",")}
-                onChange={onInputChange}
-                hidden
-                disabled={!configured}
-              />
+              <input ref={inputRef} type="file" accept={ALLOWED_VIDEO_TYPES.join(",")} onChange={onInputChange} hidden />
             </div>
 
             {uploading && (
@@ -283,20 +256,15 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
                           aria-pressed={isSelected}
                         >
                           {asset.thumbnail?.url ? (
-                            <img src={asset.thumbnail.url} alt="" loading="lazy" />
+                            <img src={resolveUploadUrl(asset.thumbnail.url)} alt="" loading="lazy" />
                           ) : (
-                            <span className="ff-video-tile-fallback" aria-hidden="true">
-                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                                <rect x="3" y="6" width="13" height="12" rx="1.2" />
-                                <path d="m16 10 5-3v10l-5-3" />
-                              </svg>
-                            </span>
+                            <video src={resolveUploadUrl(asset.url)} muted preload="metadata" />
                           )}
                           {asset.duration != null && <span className="ff-video-tile-duration">{formatDuration(asset.duration)}</span>}
                           {isSelected && <span className="ff-media-tile-badge">✓</span>}
                         </button>
-                        <span className="ff-media-tile-name" title={asset.originalName || asset.publicId}>
-                          {asset.originalName || asset.publicId}
+                        <span className="ff-media-tile-name" title={asset.originalName}>
+                          {asset.originalName}
                         </span>
                       </li>
                     );
@@ -321,29 +289,34 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
           </>
         ) : (
           <div className="ff-video-url-tab">
-            <form onSubmit={onUrlSubmit} className="ff-video-url-form">
+            {/* Deliberately not a <form>: this picker always renders inside
+                VideoForm's own <form>, and a nested <form> here is invalid
+                HTML that caused Enter / the Validate button to trigger a
+                real native form submission (a full page navigation) instead
+                of just validating the link — see onUrlKeyDown above. */}
+            <div className="ff-video-url-form">
               <label className={`ff-field${urlError ? " has-error" : ""}`}>
-                <span className="ff-field-label">Video URL</span>
+                <span className="ff-field-label">Google Drive share link</span>
                 <input
                   type="url"
-                  placeholder="https://drive.google.com/file/d/…/view or a direct .mp4 link"
+                  placeholder="https://drive.google.com/file/d/…/view"
                   value={urlInput}
                   onChange={(e) => onUrlChange(e.target.value)}
+                  onKeyDown={onUrlKeyDown}
                   autoFocus
                 />
                 <span className="ff-field-error">{urlError || ""}</span>
               </label>
-              <button type="submit" className="ff-btn ff-btn-ghost">
+              <button type="button" className="ff-btn ff-btn-ghost" onClick={validateUrl}>
                 Validate
               </button>
-            </form>
+            </div>
             <p className="ff-admin-hint">
-              Google Drive share links are automatically converted to an embeddable format. Any other direct video link (e.g. ending in
-              .mp4 or .webm) plays natively.
+              In Google Drive: right-click the video, Share → General access → "Anyone with the link", then Copy link and paste it here.
             </p>
             {urlPreview && (
               <div className="ff-video-url-preview">
-                <VideoPlayer url={urlPreview.url} embedType={urlPreview.embedType} title="Preview" />
+                <VideoPlayer url={urlPreview.url} embedType={urlPreview.embedType} driveFileId={urlPreview.driveFileId} title="Preview" />
               </div>
             )}
           </div>
@@ -351,7 +324,7 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
 
         <div className="ff-admin-dialog-actions">
           <span className="ff-admin-hint" style={{ marginRight: "auto" }}>
-            {tab === "library" ? (selectedAsset ? "1 video selected" : "Select a video") : urlPreview ? "Ready to use" : "Paste and validate a URL"}
+            {tab === "library" ? (selectedAsset ? "1 video selected" : "Select a video") : urlPreview ? "Ready to use" : "Paste and validate a link"}
           </span>
           <button type="button" className="ff-btn ff-btn-ghost" onClick={onClose}>
             Cancel

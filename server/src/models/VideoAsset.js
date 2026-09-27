@@ -7,15 +7,18 @@ const imageSchema = new mongoose.Schema(
 
 // Central library of every video ever uploaded, independent of which Video
 // Gallery entry currently uses it — same relationship Media has to
-// Product/Category/Person images (see server/src/models/Media.js). Unlike
-// Media, the bytes themselves live on Cloudinary (uploaded directly from the
-// admin's browser via an unsigned preset — see client/src/admin/utils/
-// cloudinaryVideoUpload.js), so this record only ever stores the resulting
-// url/publicId and light metadata, never the file itself.
+// Product/Category/Person images (see server/src/models/Media.js). The
+// bytes themselves live in this same MongoDB database via GridFS (see
+// server/src/utils/videoStorage.js), not on disk (which would not survive
+// Vercel's serverless functions having no persistent filesystem) and not on
+// any third-party media service — `gridFsId` is the file's _id in the
+// `videos.files` / `videos.chunks` GridFS collections, and `url` is the
+// public streaming path (GET /video-uploads/:gridFsId) the admin/public
+// player reads it back from.
 const videoAssetSchema = new mongoose.Schema(
   {
     url: { type: String, required: true, trim: true, maxlength: 2000 },
-    publicId: { type: String, required: true, trim: true, maxlength: 300, unique: true },
+    gridFsId: { type: mongoose.Schema.Types.ObjectId, required: true, unique: true },
     originalName: { type: String, trim: true, maxlength: 255, default: "" },
     mimeType: { type: String, trim: true, maxlength: 100, default: "" },
     size: { type: Number, min: 0, default: 0 },

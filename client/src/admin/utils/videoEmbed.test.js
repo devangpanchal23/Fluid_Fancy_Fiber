@@ -26,10 +26,10 @@ test("parseVideoUrl rejects a Drive link with no extractable file ID", () => {
   assert.equal(result.url, undefined);
 });
 
-test("parseVideoUrl treats a non-Drive URL as a direct, natively-playable link", () => {
+test("parseVideoUrl rejects a non-Drive URL", () => {
   const result = parseVideoUrl("https://example.com/clips/spinning.mp4");
-  assert.equal(result.url, "https://example.com/clips/spinning.mp4");
-  assert.equal(result.embedType, "native");
+  assert.ok(result.error, "only Google Drive links are supported; other hosts must be rejected with guidance");
+  assert.equal(result.url, undefined);
 });
 
 test("parseVideoUrl rejects empty input", () => {

@@ -1,8 +1,8 @@
 import Video from "../models/Video.js";
-import { deleteFromCloudinary, defaultThumbnail } from "../utils/cloudinaryVideo.js";
+import VideoAsset from "../models/VideoAsset.js";
 
 const STATUSES = ["draft", "published"];
-const SOURCES = ["upload", "url"];
+const SOURCES = ["upload", "drive"];
 const EMBED_TYPES = ["native", "iframe"];
 
 export async function listVideos(req, res, next) {
@@ -50,26 +50,33 @@ export async function getVideo(req, res, next) {
   }
 }
 
-function validateVideoBody(body, { partial = false } = {}) {
+async function validateVideoBody(body, { partial = false } = {}) {
   const errors = {};
   const source = body.source || "upload";
-  if (!partial) {
-    if (!body.title || !String(body.title).trim()) errors.title = "Required.";
-    if (!body.url || !String(body.url).trim()) errors.url = "Required.";
-    // A pasted URL has no Cloudinary asset to speak of — only an upload
-    // (from the file picker or the Video Library) needs a publicId.
-    if (source === "upload" && (!body.publicId || !String(body.publicId).trim())) errors.publicId = "Required.";
-  }
   if (body.source && !SOURCES.includes(body.source)) errors.source = "Invalid source.";
   if (body.embedType && !EMBED_TYPES.includes(body.embedType)) errors.embedType = "Invalid embed type.";
   if (body.status && !STATUSES.includes(body.status)) errors.status = "Invalid status.";
+
+  if (!partial) {
+    if (!body.title || !String(body.title).trim()) errors.title = "Required.";
+    if (!body.url || !String(body.url).trim()) errors.url = "Required.";
+  }
+
+  if (source === "upload" && body.videoAsset) {
+    const exists = await VideoAsset.exists({ _id: body.videoAsset });
+    if (!exists) errors.videoAsset = "That Video Library entry no longer exists.";
+  }
+  if (source === "drive" && !partial && !String(body.driveFileId || "").trim()) {
+    errors.driveFileId = "Required for a Google Drive video.";
+  }
+
   return errors;
 }
 
 export async function createVideo(req, res, next) {
   try {
     const body = req.body || {};
-    const errors = validateVideoBody(body);
+    const errors = await validateVideoBody(body);
     if (Object.keys(errors).length) {
       return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
     }
@@ -80,11 +87,11 @@ export async function createVideo(req, res, next) {
       title: String(body.title).trim(),
       description: body.description || "",
       url: body.url,
-      publicId: source === "upload" ? body.publicId || "" : "",
       source,
-      embedType: body.embedType || "native",
-      videoAsset: body.videoAsset || null,
-      thumbnail: body.thumbnail || (source === "upload" ? defaultThumbnail(body.publicId) : null),
+      embedType: body.embedType || (source === "drive" ? "iframe" : "native"),
+      videoAsset: source === "upload" ? body.videoAsset || null : null,
+      driveFileId: source === "drive" ? body.driveFileId || "" : "",
+      thumbnail: body.thumbnail || null,
       duration: body.duration ?? null,
       status: body.status || "draft",
       order: body.order !== undefined ? body.order : count
@@ -103,24 +110,12 @@ export async function updateVideo(req, res, next) {
       return res.status(404).json({ success: false, message: "Video not found." });
     }
     const body = req.body || {};
-    const errors = validateVideoBody(body, { partial: true });
+    const errors = await validateVideoBody(body, { partial: true });
     if (Object.keys(errors).length) {
       return res.status(400).json({ success: false, message: "Please fix the highlighted fields.", errors });
     }
 
-    const assignable = [
-      "title",
-      "description",
-      "url",
-      "publicId",
-      "source",
-      "embedType",
-      "videoAsset",
-      "thumbnail",
-      "duration",
-      "status",
-      "order"
-    ];
+    const assignable = ["title", "description", "url", "source", "embedType", "videoAsset", "driveFileId", "thumbnail", "duration", "status", "order"];
     for (const field of assignable) {
       if (body[field] !== undefined) video[field] = body[field];
     }
@@ -164,14 +159,10 @@ export async function deleteVideo(req, res, next) {
     if (!video) {
       return res.status(404).json({ success: false, message: "Video not found." });
     }
-    // Only remove the Cloudinary asset if it isn't tracked in the Video
-    // Library — a library-tracked asset may be reused by other Video Gallery
-    // entries, and is only ever deleted from the library itself
-    // (videoAssetController.deleteVideoAsset), same as Media never gets
-    // deleted just because one Product stops using it.
-    if (!video.videoAsset && video.source === "upload") {
-      await deleteFromCloudinary(video.publicId);
-    }
+    // The underlying file (if any) is only ever deleted from the Video
+    // Library itself (videoAssetController.deleteVideoAsset) — a library
+    // entry may be reused by other Video Gallery entries, same as Media
+    // never gets deleted just because one Product stops using it.
     await video.deleteOne();
     res.json({ success: true, data: null });
   } catch (err) {

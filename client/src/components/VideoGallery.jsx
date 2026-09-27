@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getApiBase } from "../apiBase";
+import { getApiBase, resolveUploadUrl } from "../apiBase";
 import VideoPlayer from "./VideoPlayer";
 
 const API_URL = getApiBase();
@@ -63,12 +63,19 @@ export default function VideoGallery() {
             const isPlaying = playingId === v._id;
             return (
               <figure key={v._id} className="ff-video-figure" data-reveal="up">
-                <div className="ff-video-frame">
+                <div className={`ff-video-frame${isPlaying ? " ff-video-frame--playing" : ""}`}>
                   {isPlaying ? (
-                    <VideoPlayer url={v.url} embedType={v.embedType} title={v.title} autoPlay className="ff-video-player" />
+                    <VideoPlayer
+                      url={v.url}
+                      embedType={v.embedType}
+                      driveFileId={v.driveFileId}
+                      title={v.title}
+                      autoPlay
+                      className="ff-video-player"
+                    />
                   ) : (
                     <button type="button" className="ff-video-play" onClick={() => setPlayingId(v._id)} aria-label={`Play ${v.title}`}>
-                      {v.thumbnail?.url && <img src={v.thumbnail.url} alt="" />}
+                      {v.thumbnail?.url && <img src={resolveUploadUrl(v.thumbnail.url)} alt="" />}
                       <span className="ff-video-play-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M8 5v14l11-7Z" />

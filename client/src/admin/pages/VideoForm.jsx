@@ -11,10 +11,10 @@ const EMPTY = {
   title: "",
   description: "",
   url: "",
-  publicId: "",
   source: "upload",
   embedType: "native",
   videoAsset: null,
+  driveFileId: "",
   duration: null,
   thumbnail: null,
   status: "draft"
@@ -50,10 +50,10 @@ export default function VideoForm() {
           title: v.title,
           description: v.description || "",
           url: v.url,
-          publicId: v.publicId || "",
           source: v.source || "upload",
           embedType: v.embedType || "native",
           videoAsset: v.videoAsset || null,
+          driveFileId: v.driveFileId || "",
           duration: v.duration,
           thumbnail: v.thumbnail || null,
           status: v.status
@@ -87,17 +87,17 @@ export default function VideoForm() {
     setForm((f) => ({
       ...f,
       url: picked.url,
-      publicId: picked.publicId || "",
       source: picked.source,
       embedType: picked.embedType,
       videoAsset: picked.videoAsset || null,
+      driveFileId: picked.driveFileId || "",
       duration: picked.duration,
       thumbnail: f.thumbnail || picked.thumbnail
     }));
   }
 
   function clearVideo() {
-    setForm((f) => ({ ...f, url: "", publicId: "", source: "upload", embedType: "native", videoAsset: null, duration: null }));
+    setForm((f) => ({ ...f, url: "", source: "upload", embedType: "native", videoAsset: null, driveFileId: "", duration: null }));
   }
 
   async function save(status) {
@@ -148,7 +148,14 @@ export default function VideoForm() {
         <legend>Video</legend>
         {form.url ? (
           <div className="ff-admin-uploader-preview ff-video-form-preview-wrap">
-            <VideoPlayer url={form.url} embedType={form.embedType} poster={form.thumbnail?.url} title={form.title} className="ff-video-form-preview" />
+            <VideoPlayer
+              url={form.url}
+              embedType={form.embedType}
+              driveFileId={form.driveFileId}
+              poster={form.thumbnail?.url}
+              title={form.title}
+              className="ff-video-form-preview"
+            />
             <div className="ff-admin-image-add-actions">
               <button type="button" className="ff-btn ff-btn-ghost" onClick={() => setPickerOpen(true)}>
                 Replace video
@@ -181,7 +188,8 @@ export default function VideoForm() {
 
       <fieldset className="ff-admin-fieldset">
         <legend>
-          Thumbnail {form.embedType === "iframe" ? "(optional — a paste-URL video has no auto-thumbnail)" : "override (optional — defaults to a Cloudinary auto-thumbnail)"}
+          Thumbnail (optional — shown before playback starts; without one the browser shows its own first-frame preview
+          {form.embedType === "iframe" ? " and Drive links show no preview at all" : ""})
         </legend>
         <ImageUploader image={form.thumbnail} onChange={(thumbnail) => set("thumbnail", thumbnail)} label="thumbnail" onUploadingChange={setThumbnailUploading} />
       </fieldset>

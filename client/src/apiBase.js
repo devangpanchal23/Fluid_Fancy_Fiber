@@ -20,17 +20,18 @@ export function getApiBase() {
   return "http://localhost:5001/api";
 }
 
-// Locally-stored uploads (server/src/utils/imageStorage.js) come back as
-// origin-relative paths like "/uploads/<file>" — correct when the API and
-// the page share an origin, but in local dev the client (Vite, :5173) and
-// the API (Express, :5001) are different origins, so a bare "/uploads/..."
-// resolves against the WRONG server (Vite's SPA fallback, which 200s with
-// index.html instead of the image) and the <img> just fails to decode.
-// Cloudinary-backed uploads are already absolute URLs and pass through
-// unchanged; this only rewrites the locally-relative case, using the same
-// API origin every request already goes through.
+// Locally-stored uploads (server/src/utils/imageStorage.js, videoStorage.js)
+// come back as origin-relative paths like "/uploads/<file>" or
+// "/video-uploads/<id>" — correct when the API and the page share an
+// origin, but in local dev the client (Vite, :5173) and the API (Express,
+// :5001) are different origins, so a bare "/uploads/..." resolves against
+// the WRONG server (Vite's SPA fallback, which 200s with index.html instead
+// of the file) and the <img>/<video> just fails to decode. A Google Drive
+// embed url is already absolute and passes through unchanged; this only
+// rewrites the locally-relative case, using the same API origin every
+// request already goes through.
 export function resolveUploadUrl(url) {
-  if (typeof url !== "string" || !url.startsWith("/uploads/")) return url;
+  if (typeof url !== "string" || !(url.startsWith("/uploads/") || url.startsWith("/video-uploads/"))) return url;
   const apiBase = getApiBase();
   const origin = apiBase.replace(/\/api\/?$/, "");
   return `${origin}${url}`;

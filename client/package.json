@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --port 4173",
     "lint": "eslint .",
-    "test": "node --test src/**/*.test.js"
+    "test": "find src -name '*.test.js' -print0 | xargs -0 node --test"
   },
   "dependencies": {
     "react": "^18.3.1",

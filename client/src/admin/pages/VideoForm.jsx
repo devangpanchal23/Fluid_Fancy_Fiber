@@ -2,11 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import VideoUploader from "../components/VideoUploader";
+import VideoPicker from "../components/VideoPicker";
 import ImageUploader from "../components/ImageUploader";
 import ConfirmDialog from "../components/ConfirmDialog";
+import VideoPlayer from "../../components/VideoPlayer";
 
-const EMPTY = { title: "", description: "", url: "", publicId: "", duration: null, thumbnail: null, status: "draft" };
+const EMPTY = {
+  title: "",
+  description: "",
+  url: "",
+  publicId: "",
+  source: "upload",
+  embedType: "native",
+  videoAsset: null,
+  duration: null,
+  thumbnail: null,
+  status: "draft"
+};
 
 export default function VideoForm() {
   const { id } = useParams();
@@ -19,10 +31,10 @@ export default function VideoForm() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
-  const [videoUploading, setVideoUploading] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const uploading = videoUploading || thumbnailUploading;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const uploading = thumbnailUploading;
 
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initial), [form, initial]);
 
@@ -38,7 +50,10 @@ export default function VideoForm() {
           title: v.title,
           description: v.description || "",
           url: v.url,
-          publicId: v.publicId,
+          publicId: v.publicId || "",
+          source: v.source || "upload",
+          embedType: v.embedType || "native",
+          videoAsset: v.videoAsset || null,
           duration: v.duration,
           thumbnail: v.thumbnail || null,
           status: v.status
@@ -68,8 +83,21 @@ export default function VideoForm() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
-  function onVideoUploaded(uploaded) {
-    setForm((f) => ({ ...f, url: uploaded.url, publicId: uploaded.publicId, duration: uploaded.duration, thumbnail: f.thumbnail || uploaded.thumbnail }));
+  function onVideoPicked(picked) {
+    setForm((f) => ({
+      ...f,
+      url: picked.url,
+      publicId: picked.publicId || "",
+      source: picked.source,
+      embedType: picked.embedType,
+      videoAsset: picked.videoAsset || null,
+      duration: picked.duration,
+      thumbnail: f.thumbnail || picked.thumbnail
+    }));
+  }
+
+  function clearVideo() {
+    setForm((f) => ({ ...f, url: "", publicId: "", source: "upload", embedType: "native", videoAsset: null, duration: null }));
   }
 
   async function save(status) {
@@ -78,8 +106,8 @@ export default function VideoForm() {
       toast.error("Please wait for the upload to finish before saving.");
       return;
     }
-    if (!form.url || !form.publicId) {
-      toast.error("Upload a video first.");
+    if (!form.url) {
+      toast.error("Choose a video first.");
       return;
     }
     setSaving(true);
@@ -117,8 +145,25 @@ export default function VideoForm() {
   return (
     <form className="ff-admin-form" onSubmit={onSubmit}>
       <fieldset className="ff-admin-fieldset">
-        <legend>Video file</legend>
-        <VideoUploader video={form} onChange={(v) => (v ? onVideoUploaded(v) : set("url", ""))} onUploadingChange={setVideoUploading} />
+        <legend>Video</legend>
+        {form.url ? (
+          <div className="ff-admin-uploader-preview ff-video-form-preview-wrap">
+            <VideoPlayer url={form.url} embedType={form.embedType} poster={form.thumbnail?.url} title={form.title} className="ff-video-form-preview" />
+            <div className="ff-admin-image-add-actions">
+              <button type="button" className="ff-btn ff-btn-ghost" onClick={() => setPickerOpen(true)}>
+                Replace video
+              </button>
+              <button type="button" className="ff-admin-image-remove" onClick={clearVideo}>
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="ff-admin-uploader-dropzone" style={{ width: 240, height: 135 }} onClick={() => setPickerOpen(true)}>
+            + Choose a video
+          </button>
+        )}
+        <VideoPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onConfirm={onVideoPicked} />
       </fieldset>
 
       <div className="ff-admin-form-grid">
@@ -135,7 +180,9 @@ export default function VideoForm() {
       </label>
 
       <fieldset className="ff-admin-fieldset">
-        <legend>Thumbnail override (optional — defaults to a Cloudinary auto-thumbnail)</legend>
+        <legend>
+          Thumbnail {form.embedType === "iframe" ? "(optional — a paste-URL video has no auto-thumbnail)" : "override (optional — defaults to a Cloudinary auto-thumbnail)"}
+        </legend>
         <ImageUploader image={form.thumbnail} onChange={(thumbnail) => set("thumbnail", thumbnail)} label="thumbnail" onUploadingChange={setThumbnailUploading} />
       </fieldset>
 

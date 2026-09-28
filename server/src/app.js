@@ -46,9 +46,16 @@ app.use(
     origin: (origin, callback) => {
       // allow requests with no origin (like mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
+      let hostname = "";
+      try {
+        hostname = new URL(origin).hostname;
+      } catch {}
       if (
         allowedOrigins.has(origin) ||
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+        hostname.endsWith(".vercel.app") ||
+        hostname === "fluidfancyenterprise.com" ||
+        hostname.endsWith(".fluidfancyenterprise.com")
       ) {
         return callback(null, true);
       }

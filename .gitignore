@@ -10,3 +10,4 @@ build/
 .claude/
 server/uploads/*
 !server/uploads/.gitkeep
+.env.local

@@ -10,7 +10,7 @@ export default function Faq() {
         <div className="ff-faq-sticky" data-reveal="left">
           <div className="ff-kicker">06 — Before you ask</div>
           <h2 className="ff-heading">The questions buyers open with</h2>
-          <p className="ff-lede" style={{ maxWidth: "34ch", marginTop: 18 }}>
+          <p className="ff-lede">
             If yours isn&apos;t here, our technical desk answers within one working day.
           </p>
         </div>

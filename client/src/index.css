@@ -2154,15 +2154,30 @@ textarea::placeholder {
 
 .ff-faq-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(26px, 4vw, 70px);
   max-width: var(--container);
   margin: 0 auto;
   align-items: start;
 }
 .ff-faq-sticky {
-  position: sticky;
-  top: 120px;
+  position: static;
+}
+.ff-faq-sticky .ff-lede {
+  margin-top: 18px;
+  max-width: 54ch;
+}
+@media (min-width: 900px) {
+  .ff-faq-grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+  .ff-faq-sticky {
+    position: sticky;
+    top: 120px;
+  }
+  .ff-faq-sticky .ff-lede {
+    max-width: 34ch;
+  }
 }
 .ff-faq-list {
   border-top: 1px solid var(--ff-line-strong);

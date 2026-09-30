@@ -51,9 +51,11 @@
 
 .ff-admin-login {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  background: var(--ff-ink);
+  background-color: #dcd4c3;
+  background-image: radial-gradient(ellipse at center, #eae3d5 0%, #ddd4c2 52%, #cfc4af 100%);
   padding: 24px;
 }
 .ff-admin-login-card {

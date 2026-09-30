@@ -107,11 +107,34 @@ export const LINES = [
 ];
 
 export const STEPS = [
-  { num: "01", title: "Fibre intake", body: "Bale-by-bale inspection for staple length, micronaire and trash before anything reaches the line." },
-  { num: "02", title: "Blowroom & carding", body: "Opening and cleaning tuned per blend, with waste extraction logged against the lot." },
-  { num: "03", title: "Ring spinning", body: "Eleven lines running to a fixed twist multiplier, checked hourly by the floor technician." },
-  { num: "04", title: "Winding & clearing", body: "Electronic yarn clearers set per programme — thin places, thick places and neps cut to your tolerance." },
-  { num: "05", title: "QC & dispatch", body: "Reference-cone matching, packing to your brief, and a certificate of analysis in the carton." }
+  { num: "01", title: "Fibre intake", body: "We check every cotton bale for quality and cleanliness before production." },
+  { num: "02", title: "Blowroom & carding", body: "We open, clean and prepare the cotton for spinning." },
+  { num: "03", title: "Ring spinning", body: "We convert the prepared cotton into quality yarn with controlled production." },
+  { num: "04", title: "Winding & clearing", body: "We wind the yarn and remove unwanted defects using electronic checking." },
+  { num: "05", title: "Quality check & dispatch", body: "We check the finished yarn, pack it properly and prepare it for delivery." }
+];
+
+export const FACTORY_ADVANTAGES = [
+  {
+    num: "01",
+    title: "Modern Production",
+    desc: "Well-planned production systems built for stable and consistent output."
+  },
+  {
+    num: "02",
+    title: "Quality Checks",
+    desc: "Quality is checked at different stages before the yarn is packed."
+  },
+  {
+    num: "03",
+    title: "Consistent Yarn",
+    desc: "Careful production helps maintain yarn quality from lot to lot."
+  },
+  {
+    num: "04",
+    title: "Ready for Business",
+    desc: "Proper packing and dispatch support smooth and reliable deliveries."
+  }
 ];
 
 export const CREDENTIALS = [

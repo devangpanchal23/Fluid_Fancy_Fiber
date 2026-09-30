@@ -28,11 +28,10 @@ export default function Process() {
         <div className="ff-section-head" data-reveal="up">
           <div>
             <div className="ff-kicker ff-kicker--dark">02 — Process</div>
-            <h2 className="ff-heading">Bale to beam in five</h2>
+            <h2 className="ff-heading">From cotton to quality yarn</h2>
           </div>
           <p className="ff-lede" style={{ maxWidth: "38ch", color: "rgba(244,240,232,0.66)" }}>
-            Every stage is logged against the lot number, so a cone on your loom can be traced back to the bale it
-            came from.
+            Five simple steps. One focus — consistent quality.
           </p>
         </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { CREDENTIALS } from "../data/content";
+import { FACTORY_ADVANTAGES } from "../data/content";
 import { images } from "../assets/images";
 
 export default function Mill() {
@@ -40,35 +40,50 @@ export default function Mill() {
             <i className="corner bl" />
             <i className="corner br" />
             <div ref={wrapRef} className="ff-mill-frame-inner">
-              <img ref={imgRef} src={images.mill} alt="Cotton fibre and cones on the mill floor" />
+              <img
+                ref={imgRef}
+                src={images.mill}
+                alt="Fluid Fancy Fibre modern textile spinning machinery and factory floor"
+              />
             </div>
           </figure>
-          <div className="ff-mill-badge">
+          <div className="ff-mill-badge blueprint">
             <i className="corner tl" />
             <i className="corner tr" />
             <i className="corner bl" />
             <i className="corner br" />
-            <div className="ff-mill-badge-title">Woman-led</div>
-            <div className="ff-mill-badge-sub">Since 2005</div>
+            <div className="ff-mill-badge-title">Manufacturing</div>
+            <div className="ff-mill-badge-sub">Fluid Fancy Fibre</div>
           </div>
         </div>
+
         <div className="ff-mill-copy" data-reveal="right">
-          <div className="ff-kicker">03 — The mill</div>
-          <h2 className="ff-heading">Run by people who can read a cone</h2>
+          <div className="ff-kicker">03 — The factory</div>
+          <h2 className="ff-heading">
+            Built for quality.
+            <br />
+            Made for consistency.
+          </h2>
           <p>
-            Fluid Fancy Fibre was set up to remove the variable most mills quietly absorb: the batch that doesn't
-            match the one before it. Our floor is led by women who came up through spinning, winding and quality,
-            not through a spreadsheet.
+            At Fluid Fancy Fibre, quality starts inside the factory. Our production process, machinery and
+            quality checks work together to make yarn that is consistent, reliable and ready for your
+            production needs.
           </p>
           <p>
-            That shows up in small places — twist held inside tolerance across a 40-tonne run, clearer settings
-            logged per programme, and a sample sent before the order, every time.
+            From fibre preparation to spinning, winding and final checking, every stage is handled with
+            care. We focus on stable production, clean yarn and consistent quality from one lot to the next.
           </p>
-          <div className="ff-credentials">
-            {CREDENTIALS.map((c) => (
-              <div className="ff-credential" key={c}>
-                <span className="ff-credential-dot" />
-                <span>{c}</span>
+
+          <div className="ff-factory-panel blueprint">
+            <i className="corner tl" />
+            <i className="corner tr" />
+            <i className="corner bl" />
+            <i className="corner br" />
+            {FACTORY_ADVANTAGES.map((adv) => (
+              <div className="ff-factory-cell" key={adv.num}>
+                <div className="ff-factory-cell-num">{adv.num}</div>
+                <h3 className="ff-factory-cell-title">{adv.title}</h3>
+                <p className="ff-factory-cell-desc">{adv.desc}</p>
               </div>
             ))}
           </div>

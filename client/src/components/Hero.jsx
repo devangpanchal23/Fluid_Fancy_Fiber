@@ -32,11 +32,6 @@ export default function Hero({ onOpenModal }) {
   return (
     <section id="top" className="ff-hero">
       <div className="ff-container">
-        <div className="ff-hero-eyebrow">
-          <span className="ff-hero-rule" />
-          <span className="ff-hero-eyebrow-text">Ring-spun yarn · Woman-led · Est. 2005</span>
-        </div>
-
         <h1>
           <span className="ff-hero-line">
             <span style={{ animationDelay: "80ms" }}>Consistent</span>

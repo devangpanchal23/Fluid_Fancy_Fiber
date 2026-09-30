@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { images as bundledImages } from "../assets/images";
 import { getApiBase, resolveUploadUrl } from "../apiBase";
+import { useNearViewport } from "../hooks/useNearViewport";
 
 const API_URL = getApiBase();
 
@@ -12,7 +13,7 @@ function resolveImage(url) {
 // GET /api/cone-library returns (already in the admin-chosen order). The
 // request is never cached, so an add/edit/delete/reorder in the admin shows on
 // the next page load.
-function useConeLibrary() {
+function useConeLibrary(enabled) {
   const [state, setState] = useState({ status: "loading", items: [] });
 
   const load = (signal) => {
@@ -34,10 +35,11 @@ function useConeLibrary() {
   };
 
   useEffect(() => {
+    if (!enabled) return undefined;
     const controller = new AbortController();
     load(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [enabled]);
 
   return { ...state, retry: () => load() };
 }
@@ -117,7 +119,7 @@ function ConeLightbox({ items, index, onChange, onClose }) {
       )}
 
       <figure className="ff-lightbox-stage" onClick={(e) => e.stopPropagation()}>
-        <img key={item._id} src={resolveImage(item.image.url)} alt={item.image.alt || `${item.productName} yarn sample`} />
+        <img key={item._id} src={resolveImage(item.image.url)} alt={item.image.alt || `${item.productName} yarn sample`} loading="lazy" decoding="async" />
         <figcaption className="ff-lightbox-caption">
           <span className="ff-lightbox-name">{item.productName}</span>
           <span className="ff-lightbox-details">{item.productDetails}</span>
@@ -137,7 +139,8 @@ function ConeLightbox({ items, index, onChange, onClose }) {
 }
 
 export default function Gallery() {
-  const { status, items, retry } = useConeLibrary();
+  const [sectionRef, near] = useNearViewport();
+  const { status, items, retry } = useConeLibrary(near);
   const [openIndex, setOpenIndex] = useState(null);
   const triggers = useRef([]);
 
@@ -150,7 +153,7 @@ export default function Gallery() {
   }, []);
 
   return (
-    <section id="gallery" className="ff-section ff-section--tight-top">
+    <section ref={sectionRef} id="gallery" className="ff-section ff-section--tight-top">
       <div className="ff-container">
         <div className="ff-section-head" data-reveal="up" style={{ paddingBottom: 18, borderBottom: "1px solid var(--ff-line)" }}>
           <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(22px, 2.2vw, 32px)", margin: 0, textTransform: "uppercase", letterSpacing: "0.02em" }}>

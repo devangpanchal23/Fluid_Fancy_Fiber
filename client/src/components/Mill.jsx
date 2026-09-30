@@ -44,6 +44,10 @@ export default function Mill() {
                 ref={imgRef}
                 src={images.mill}
                 alt="Fluid Fancy Fibre modern textile spinning machinery and factory floor"
+                width="1200"
+                height="896"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           </figure>

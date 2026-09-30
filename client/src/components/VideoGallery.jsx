@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { getApiBase, resolveUploadUrl } from "../apiBase";
 import VideoPlayer from "./VideoPlayer";
+import { useNearViewport } from "../hooks/useNearViewport";
 
 const API_URL = getApiBase();
 
-function usePublishedVideos() {
+function usePublishedVideos(enabled) {
   const [videos, setVideos] = useState([]);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     let cancelled = false;
     fetch(`${API_URL}/videos?status=published&sort=order`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
@@ -22,19 +24,20 @@ function usePublishedVideos() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return videos;
 }
 
 export default function VideoGallery() {
-  const videos = usePublishedVideos();
+  const [sectionRef, near] = useNearViewport();
+  const videos = usePublishedVideos(near);
   const [playingId, setPlayingId] = useState(null);
 
-  if (videos.length === 0) return null;
+  if (videos.length === 0) return <div ref={sectionRef} aria-hidden="true" style={{ height: 1 }} />;
 
   return (
-    <section id="videos" className="ff-section ff-section--tight-top">
+    <section ref={sectionRef} id="videos" className="ff-section ff-section--tight-top">
       <div className="ff-container">
         <div
           className="ff-section-head"
@@ -75,7 +78,7 @@ export default function VideoGallery() {
                     />
                   ) : (
                     <button type="button" className="ff-video-play" onClick={() => setPlayingId(v._id)} aria-label={`Play ${v.title}`}>
-                      {v.thumbnail?.url && <img src={resolveUploadUrl(v.thumbnail.url)} alt="" />}
+                      {v.thumbnail?.url && <img src={resolveUploadUrl(v.thumbnail.url)} alt="" loading="lazy" decoding="async" />}
                       <span className="ff-video-play-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M8 5v14l11-7Z" />

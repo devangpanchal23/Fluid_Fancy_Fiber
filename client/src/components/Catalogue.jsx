@@ -4,6 +4,7 @@ import { images } from "../assets/images";
 import { getApiBase, resolveUploadUrl } from "../apiBase";
 import { DEFAULT_IMAGE, resolveGallery } from "../utils/catalogueImage";
 import Corners from "./Corners";
+import { useNearViewport } from "../hooks/useNearViewport";
 
 const API_URL = getApiBase();
 
@@ -18,7 +19,7 @@ function resolveImage(url) {
 function CatalogueImage({ src, alt }) {
   const [failed, setFailed] = useState(false);
   const finalSrc = failed ? resolveImage(DEFAULT_IMAGE) : resolveImage(src);
-  return <img src={finalSrc} alt={alt} onError={() => setFailed(true)} />;
+  return <img src={finalSrc} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
 }
 
 function fromApiVariant(v) {
@@ -43,10 +44,11 @@ function fromApiProduct(p) {
   };
 }
 
-function useCategories() {
+function useCategories(enabled) {
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     let cancelled = false;
     fetch(`${API_URL}/categories?activeOnly=true`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
@@ -61,7 +63,7 @@ function useCategories() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return categories;
 }
@@ -70,11 +72,12 @@ function useCategories() {
 // Type + Variant APIs first, but falls back to the site's built-in static
 // (flat) lines if the API/database isn't reachable or returns nothing — the
 // public page must never break because of backend/database availability.
-function useCatalogueLines() {
+function useCatalogueLines(enabled) {
   const [lines, setLines] = useState(LINES);
   const [dynamic, setDynamic] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     let cancelled = false;
 
     async function load() {
@@ -111,14 +114,15 @@ function useCatalogueLines() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return { lines, dynamic };
 }
 
 export default function Catalogue({ onOpenModal }) {
-  const { lines: allLines, dynamic } = useCatalogueLines();
-  const categories = useCategories();
+  const [sectionRef, near] = useNearViewport();
+  const { lines: allLines, dynamic } = useCatalogueLines(near);
+  const categories = useCategories(near);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(-1);
@@ -183,7 +187,7 @@ export default function Catalogue({ onOpenModal }) {
   }
 
   return (
-    <section id="catalogue" className="ff-section">
+    <section ref={sectionRef} id="catalogue" className="ff-section">
       <div className="ff-container">
         <div className="ff-section-head" data-reveal="up">
           <div>

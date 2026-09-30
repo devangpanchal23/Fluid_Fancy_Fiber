@@ -76,7 +76,7 @@ export default function Hero({ onOpenModal }) {
           <i className="corner bl" />
           <i className="corner br" />
           <div ref={imgRef} className="ff-hero-frame-inner">
-            <img src={images.hero} alt="Spinning frames with taut thread lines running to cones on the production floor" />
+            <img src={images.hero} alt="Spinning frames with taut thread lines running to cones on the production floor" width="626" height="417" fetchPriority="high" decoding="async" />
           </div>
           <div className="ff-hero-frame-shade" />
           <figcaption className="ff-hero-figcaption">

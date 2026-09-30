@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import Preloader from "./components/Preloader";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import WhyUs from "./components/WhyUs";
@@ -23,7 +22,6 @@ import { useReveal } from "./hooks/useReveal";
 import { useMagnetic } from "./hooks/useMagnetic";
 
 export default function App() {
-  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, title: "", lineName: "" });
   const { scroll, shrink, showTop } = useScrollProgress({ shrinkAt: 90, topAt: 0.07 });
 
@@ -37,8 +35,6 @@ export default function App() {
 
   return (
     <div className="ff-app">
-      {loading && <Preloader onDone={() => setLoading(false)} />}
-
       <div className="ff-progress" style={{ transform: `scaleX(${scroll.toFixed(4)})` }} />
 
       <Header shrink={shrink} onOpenModal={openModal} />

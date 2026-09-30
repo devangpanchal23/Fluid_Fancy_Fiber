@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { images as bundledImages } from "../assets/images";
 import { getApiBase, resolveUploadUrl } from "../apiBase";
+import { useNearViewport } from "../hooks/useNearViewport";
 
 const API_URL = getApiBase();
 
@@ -35,7 +36,7 @@ function fromApiPerson(p) {
 // built-in fallback roster, so what visitors see can never disagree with what
 // the admin manages. It refetches whenever the tab regains focus, so an edit
 // made in the admin shows up without a manual hard refresh.
-function usePeople() {
+function usePeople(enabled) {
   const [state, setState] = useState({ status: "loading", people: [] });
 
   const load = useCallback((signal) => {
@@ -55,6 +56,7 @@ function usePeople() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     const controller = new AbortController();
     load(controller.signal);
 
@@ -68,7 +70,7 @@ function usePeople() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
-  }, [load]);
+  }, [enabled, load]);
 
   return { ...state, retry: () => load() };
 }
@@ -78,14 +80,15 @@ function PersonPhoto({ person }) {
   if (!person.image || broken) {
     return <span className="ff-person-initials">{person.initials}</span>;
   }
-  return <img className="ff-person-photo" src={resolveImage(person.image)} alt={person.name} onError={() => setBroken(true)} />;
+  return <img className="ff-person-photo" src={resolveImage(person.image)} alt={person.name} loading="lazy" decoding="async" onError={() => setBroken(true)} />;
 }
 
 export default function People() {
-  const { status, people, retry } = usePeople();
+  const [sectionRef, near] = useNearViewport();
+  const { status, people, retry } = usePeople(near);
 
   return (
-    <section id="people" className="ff-section ff-section--tight-top">
+    <section ref={sectionRef} id="people" className="ff-section ff-section--tight-top">
       <div className="ff-container">
         <div className="ff-section-head" data-reveal="up">
           <div>

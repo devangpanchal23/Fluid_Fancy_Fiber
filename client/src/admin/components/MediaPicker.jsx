@@ -176,7 +176,7 @@ export default function MediaPicker({ open, multiple = true, onClose, onConfirm 
                       onClick={() => toggle(media)}
                       aria-pressed={isSelected}
                     >
-                      <img src={resolveUploadUrl(media.url)} alt={media.alt || media.originalName || ""} loading="lazy" />
+                      <img src={resolveUploadUrl(media.url)} alt={media.alt || media.originalName || ""} width="600" height="600" loading="lazy" decoding="async" />
                       {isSelected && <span className="ff-media-tile-badge">{multiple ? index + 1 : "✓"}</span>}
                     </button>
                     <span className="ff-media-tile-name" title={media.originalName || media.filename}>

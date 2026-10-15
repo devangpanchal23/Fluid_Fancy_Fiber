@@ -98,7 +98,7 @@ export default function ImageUploader({ image, onChange, label = "Image", onUplo
     <div className="ff-admin-uploader">
       {displaySrc ? (
         <div className="ff-admin-uploader-preview">
-          <img src={displaySrc} alt={image?.alt || ""} />
+          <img src={displaySrc} alt={image?.alt || ""} width="800" height="600" decoding="async" />
           {uploading && <span className="ff-admin-uploader-spinner" aria-label="Uploading" />}
           {!uploading && (
             <button type="button" className="ff-admin-image-remove" onClick={removeImage}>

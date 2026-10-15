@@ -1,25 +1,27 @@
-import { useCallback, useState } from "react";
+import { lazy, useCallback, useState } from "react";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import WhyUs from "./components/WhyUs";
 import Stats from "./components/Stats";
 import Ticker from "./components/Ticker";
 import QuoteBanner from "./components/QuoteBanner";
-import Catalogue from "./components/Catalogue";
-import Gallery from "./components/Gallery";
-import VideoGallery from "./components/VideoGallery";
+import DeferredSection from "./components/DeferredSection";
 import Process from "./components/Process";
 import Mill from "./components/Mill";
-import People from "./components/People";
 import Reviews from "./components/Reviews";
 import Faq from "./components/Faq";
 import Contact from "./components/Contact";
 import Footer from "./components/Footer";
 import BackToTop from "./components/BackToTop";
-import SpecModal from "./components/SpecModal";
 import { useScrollProgress } from "./hooks/useScrollProgress";
 import { useReveal } from "./hooks/useReveal";
 import { useMagnetic } from "./hooks/useMagnetic";
+
+const Catalogue = lazy(() => import("./components/Catalogue.jsx"));
+const Gallery = lazy(() => import("./components/Gallery.jsx"));
+const VideoGallery = lazy(() => import("./components/VideoGallery.jsx"));
+const People = lazy(() => import("./components/People.jsx"));
+const SpecModal = lazy(() => import("./components/SpecModal.jsx"));
 
 export default function App() {
   const [modal, setModal] = useState({ open: false, title: "", lineName: "" });
@@ -44,12 +46,20 @@ export default function App() {
       <Stats />
       <Ticker />
       <QuoteBanner onOpenModal={openModal} />
-      <Catalogue onOpenModal={openModal} />
-      <Gallery />
-      <VideoGallery />
+      <DeferredSection id="catalogue" label="Catalogue" minHeight="min(1200px, 150vh)">
+        <Catalogue onOpenModal={openModal} />
+      </DeferredSection>
+      <DeferredSection id="gallery" label="Cone library" minHeight="min(720px, 100vh)">
+        <Gallery />
+      </DeferredSection>
+      <DeferredSection id="videos" label="Videos" minHeight="1px">
+        <VideoGallery />
+      </DeferredSection>
       <Process />
       <Mill />
-      <People />
+      <DeferredSection id="people" label="People" minHeight="min(720px, 100vh)">
+        <People />
+      </DeferredSection>
       <Reviews />
       <Faq />
       <Contact />
@@ -57,7 +67,11 @@ export default function App() {
 
       <BackToTop visible={showTop} />
 
-      <SpecModal isOpen={modal.open} title={modal.title} lineName={modal.lineName} onClose={closeModal} />
+      {modal.open && (
+        <Suspense fallback={null}>
+          <SpecModal isOpen={modal.open} title={modal.title} lineName={modal.lineName} onClose={closeModal} />
+        </Suspense>
+      )}
     </div>
   );
 }

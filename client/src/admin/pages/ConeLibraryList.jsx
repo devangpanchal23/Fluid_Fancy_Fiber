@@ -21,7 +21,7 @@ function ConeThumb({ product }) {
       </Link>
     );
   }
-  return <img src={resolveSrc(product.image.url)} alt={product.image.alt || product.productName} className="ff-admin-table-thumb" onError={() => setBroken(true)} />;
+  return <img src={resolveSrc(product.image.url)} alt={product.image.alt || product.productName} width="120" height="90" loading="lazy" decoding="async" className="ff-admin-table-thumb" onError={() => setBroken(true)} />;
 }
 
 export default function ConeLibraryList() {

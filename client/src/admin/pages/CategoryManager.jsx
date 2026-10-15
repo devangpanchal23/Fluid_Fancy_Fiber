@@ -136,7 +136,7 @@ export default function CategoryManager() {
                 <tr key={c._id}>
                   <td>
                     {c.image?.url ? (
-                      <img src={resolveSrc(c.image.url)} alt={c.image.alt || ""} className="ff-admin-table-thumb" />
+                      <img src={resolveSrc(c.image.url)} alt={c.image.alt || ""} width="120" height="90" loading="lazy" decoding="async" className="ff-admin-table-thumb" />
                     ) : (
                       <ImageUploader image={c.image} onChange={(image) => updateImage(c, image)} label="image" />
                     )}

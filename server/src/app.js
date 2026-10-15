@@ -66,9 +66,9 @@ app.use((req, res, next) => {
       "frame-ancestors 'none'",
       "form-action 'self'",
       "script-src 'self' https://va.vercel-scripts.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data: https://fonts.gstatic.com",
+      "font-src 'self' data:",
       "connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com",
       "frame-src https://drive.google.com https://www.google.com"
     ].join("; ")

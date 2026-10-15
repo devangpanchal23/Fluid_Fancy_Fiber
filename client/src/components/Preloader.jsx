@@ -54,7 +54,7 @@ export default function Preloader({ onDone }) {
     <div className={`ff-preloader${exiting ? " is-exiting" : ""}`} role="status" aria-live="polite">
       <div className="ff-preloader-inner">
         <div className="ff-preloader-logo-wrap">
-          <img className="ff-preloader-logo" src={images.logo} alt="Fluid Fancy Fibre LLP" />
+          <img className="ff-preloader-logo" src={images.logoFull} alt="Fluid Fancy Fibre LLP" width="822" height="258" decoding="async" />
         </div>
         <div className="ff-preloader-bar">
           <div className="ff-preloader-fill" style={{ transform: `scaleX(${pct / 100})` }} />

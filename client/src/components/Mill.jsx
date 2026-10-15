@@ -43,9 +43,11 @@ export default function Mill() {
               <img
                 ref={imgRef}
                 src={images.mill}
+                srcSet={images.millSrcSet}
+                sizes="(max-width: 899px) 92vw, 46vw"
                 alt="Fluid Fancy Fibre modern textile spinning machinery and factory floor"
-                width="1200"
-                height="896"
+                width="870"
+                height="650"
                 loading="lazy"
                 decoding="async"
               />

@@ -19,7 +19,7 @@ function resolveImage(url) {
 function CatalogueImage({ src, alt }) {
   const [failed, setFailed] = useState(false);
   const finalSrc = failed ? resolveImage(DEFAULT_IMAGE) : resolveImage(src);
-  return <img src={finalSrc} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+  return <img src={finalSrc} alt={alt} width="800" height="800" loading="lazy" decoding="async" onError={() => setFailed(true)} />;
 }
 
 function fromApiVariant(v) {

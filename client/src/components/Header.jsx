@@ -16,7 +16,7 @@ export default function Header({ shrink, onOpenModal }) {
     <header className={`ff-header${shrink ? " is-shrunk" : ""}`}>
       <div className="ff-header-row">
         <a href="#top" className="ff-brand">
-          <img src={images.logo} alt="Fluid Fancy Fibre LLP" />
+          <img src={images.logo} alt="Fluid Fancy Fibre LLP" width="368" height="116" decoding="async" />
         </a>
 
         <nav className="ff-nav ff-nav-desktop" aria-label="Primary">

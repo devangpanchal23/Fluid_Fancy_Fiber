@@ -25,7 +25,7 @@ function PersonThumb({ person }) {
       </Link>
     );
   }
-  return <img src={resolveSrc(person.image.url)} alt={person.image.alt || person.name} className="ff-admin-table-thumb" onError={() => setBroken(true)} />;
+  return <img src={resolveSrc(person.image.url)} alt={person.image.alt || person.name} width="120" height="90" loading="lazy" decoding="async" className="ff-admin-table-thumb" onError={() => setBroken(true)} />;
 }
 
 export default function PersonList() {

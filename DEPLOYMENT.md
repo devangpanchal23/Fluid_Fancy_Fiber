@@ -16,7 +16,7 @@ Set these values in Vercel for Production and Preview as appropriate. Keep crede
 | `NOTIFY_EMAIL` | Optional | Internal enquiry notification recipient. |
 | `CLIENT_ORIGIN` | Optional | Comma-separated exact origins only when the frontend is hosted separately. Same-origin Vercel deployment does not need this. |
 | `VITE_SITE_URL` | Recommended | Production canonical origin, for example `https://your-domain.example`. Do not set a Preview URL here. |
-| `VITE_ENABLE_ANALYTICS` | Optional | Set to `false` to disable Vercel Analytics. Enabled by default. |
+| `VITE_ENABLE_ANALYTICS` | Optional | Set to `true` only when Vercel Analytics is configured for the deployment. Disabled by default. |
 
 `VITE_API_URL` is normally omitted on Vercel; the site uses the same-origin `/api` routes. Locally, `client/.env` can point to `http://localhost:5001/api`.
 

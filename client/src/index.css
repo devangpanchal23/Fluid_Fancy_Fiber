@@ -3,6 +3,69 @@
    Palette and type pulled directly from "Fluid Fibers Site.dc.html".
    ========================================================================== */
 
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/barlow-latin-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/barlow-condensed-latin-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/barlow-condensed-latin-500.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/barlow-latin-600.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/barlow-condensed-latin-600.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Barlow Fallback";
+  src: local("Arial");
+  size-adjust: 98%;
+  ascent-override: 95%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Barlow Condensed Fallback";
+  src: local("Arial Narrow"), local("Arial");
+  size-adjust: 82%;
+  ascent-override: 95%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
 :root {
   --ff-bg: #f4f0e8;
   --ff-bg-alt: #ebe5d8;
@@ -20,8 +83,8 @@
   --ff-error-dark: #9b4a2f;
   --ff-paper: #f7f4ed;
 
-  --font-heading: "Barlow Condensed", "Helvetica Neue", Arial, sans-serif;
-  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Barlow Condensed", "Barlow Condensed Fallback", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Barlow", "Barlow Fallback", "Helvetica Neue", Arial, sans-serif;
 
   --container: 1460px;
   --gutter: clamp(18px, 4vw, 60px);
@@ -131,6 +194,29 @@ textarea::placeholder {
 }
 .ff-section--tight-bottom {
   padding-bottom: 0;
+}
+
+.ff-deferred-region {
+  width: 100%;
+}
+.ff-deferred-skeleton {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  padding: clamp(24px, 4vw, 60px) var(--gutter);
+  background: var(--ff-bg);
+}
+.ff-deferred-skeleton span {
+  display: block;
+  width: min(100%, 420px);
+  height: 1px;
+  background: var(--ff-line-soft);
+}
+.ff-deferred-skeleton span:nth-child(2) {
+  width: min(82%, 340px);
+}
+.ff-deferred-skeleton span:nth-child(3) {
+  width: min(64%, 250px);
 }
 
 .ff-kicker {

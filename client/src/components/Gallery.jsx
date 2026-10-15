@@ -17,6 +17,9 @@ function GalleryImage({ src, alt, ...props }) {
       {...props}
       src={resolveImage(failed ? DEFAULT_IMAGE : src)}
       alt={alt}
+      width="800"
+      height="1000"
+      decoding="async"
       onError={() => setFailed(true)}
     />
   );

@@ -132,7 +132,7 @@ export default function ProductImageUploader({ images, onChange, onUploadingChan
         <ul className="ff-admin-image-list">
           {images.map((img, i) => (
             <li key={`${img.url}-${i}`}>
-              <img src={resolveSrc(img.url)} alt={img.alt || ""} />
+              <img src={resolveSrc(img.url)} alt={img.alt || ""} width="800" height="600" loading="lazy" decoding="async" />
               <div className="ff-admin-image-meta">
                 <span>{i === 0 ? "Primary photo" : img.alt || "Gallery photo"}</span>
               </div>

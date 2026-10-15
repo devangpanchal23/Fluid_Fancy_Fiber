@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { getApiBase, resolveUploadUrl } from "../apiBase";
-import VideoPlayer from "./VideoPlayer";
 import { useNearViewport } from "../hooks/useNearViewport";
 
 const API_URL = getApiBase();
+const VideoPlayer = lazy(() => import("./VideoPlayer.jsx"));
 
 function usePublishedVideos(enabled) {
   const [videos, setVideos] = useState([]);
@@ -68,17 +68,19 @@ export default function VideoGallery() {
               <figure key={v._id} className="ff-video-figure" data-reveal="up">
                 <div className={`ff-video-frame${isPlaying ? " ff-video-frame--playing" : ""}`}>
                   {isPlaying ? (
-                    <VideoPlayer
-                      url={v.url}
-                      embedType={v.embedType}
-                      driveFileId={v.driveFileId}
-                      title={v.title}
-                      autoPlay
-                      className="ff-video-player"
-                    />
+                    <Suspense fallback={<div className="ff-video-loading" aria-hidden="true" />}>
+                      <VideoPlayer
+                        url={v.url}
+                        embedType={v.embedType}
+                        driveFileId={v.driveFileId}
+                        title={v.title}
+                        autoPlay
+                        className="ff-video-player"
+                      />
+                    </Suspense>
                   ) : (
                     <button type="button" className="ff-video-play" onClick={() => setPlayingId(v._id)} aria-label={`Play ${v.title}`}>
-                      {v.thumbnail?.url && <img src={resolveUploadUrl(v.thumbnail.url)} alt="" loading="lazy" decoding="async" />}
+                      {v.thumbnail?.url && <img src={resolveUploadUrl(v.thumbnail.url)} alt="" width="1280" height="720" loading="lazy" decoding="async" />}
                       <span className="ff-video-play-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M8 5v14l11-7Z" />

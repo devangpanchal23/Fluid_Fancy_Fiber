@@ -162,7 +162,7 @@ export default function VideoAssetLibrary() {
             <li key={asset._id} className="ff-media-card ff-video-card">
               <div className="ff-media-card-thumb">
                 {asset.thumbnail?.url ? (
-                  <img src={resolveUploadUrl(asset.thumbnail.url)} alt="" loading="lazy" />
+                  <img src={resolveUploadUrl(asset.thumbnail.url)} alt="" width="640" height="360" loading="lazy" decoding="async" />
                 ) : (
                   <video src={resolveUploadUrl(asset.url)} muted preload="metadata" />
                 )}

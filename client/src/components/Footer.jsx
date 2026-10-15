@@ -7,7 +7,7 @@ export default function Footer() {
     <footer className="ff-footer">
       <div className="ff-footer-grid">
         <div className="ff-footer-brand">
-          <img src={images.logo} alt="Fluid Fancy Fibre LLP" />
+          <img src={images.logoFull} alt="Fluid Fancy Fibre LLP" width="822" height="258" loading="lazy" decoding="async" />
           <p>Ring-spun mono, lino and specialty counts for mills that measure twice.</p>
         </div>
         {FOOTER_COLUMNS.map((col) => (

@@ -86,7 +86,7 @@ export default function VideoList() {
                 <tr key={v._id}>
                   <td>
                     {v.thumbnail?.url ? (
-                      <img src={resolveUploadUrl(v.thumbnail.url)} alt="" className="ff-admin-table-thumb" />
+                      <img src={resolveUploadUrl(v.thumbnail.url)} alt="" width="120" height="68" loading="lazy" decoding="async" className="ff-admin-table-thumb" />
                     ) : (
                       <span className="ff-admin-table-thumb ff-admin-table-thumb--empty" />
                     )}

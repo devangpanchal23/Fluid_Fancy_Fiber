@@ -80,7 +80,7 @@ function PersonPhoto({ person }) {
   if (!person.image || broken) {
     return <span className="ff-person-initials">{person.initials}</span>;
   }
-  return <img className="ff-person-photo" src={resolveImage(person.image)} alt={person.name} loading="lazy" decoding="async" onError={() => setBroken(true)} />;
+  return <img className="ff-person-photo" src={resolveImage(person.image)} alt={person.name} width="480" height="600" loading="lazy" decoding="async" onError={() => setBroken(true)} />;
 }
 
 export default function People() {
@@ -98,7 +98,7 @@ export default function People() {
         </div>
 
         {status === "loading" && (
-          <div className="ff-people-grid" aria-busy="true" aria-label="Loading people">
+          <div className="ff-people-grid" role="status" aria-busy="true" aria-label="Loading people">
             {[0, 1, 2].map((i) => (
               <div key={i} className="ff-person ff-person--skeleton">
                 <div className="ff-person-media" />
@@ -119,9 +119,9 @@ export default function People() {
         {status === "ready" && people.length === 0 && <p className="ff-people-note">Our team profiles will be published here soon.</p>}
 
         {status === "ready" && people.length > 0 && (
-          <div className="ff-people-grid">
+          <div className="ff-people-grid" role="list">
             {people.map((p) => (
-              <article key={p.id} className="ff-person" data-reveal="up">
+              <article key={p.id} className="ff-person" role="listitem" data-reveal="up">
                 <i className="corner tl" />
                 <i className="corner tr" />
                 <i className="corner bl" />

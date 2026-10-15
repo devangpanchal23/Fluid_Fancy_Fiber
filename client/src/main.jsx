@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Analytics } from "@vercel/analytics/react";
 import App from "./App.jsx";
 import NotFound from "./components/NotFound.jsx";
 import GlobalErrorBoundary from "./components/GlobalErrorBoundary.jsx";
@@ -11,6 +10,7 @@ import "./index.css";
 const AdminApp = lazy(() => import("./admin/AdminApp.jsx"));
 const PrivacyPage = lazy(() => import("./components/LegalPage.jsx").then((module) => ({ default: module.PrivacyPage })));
 const TermsPage = lazy(() => import("./components/LegalPage.jsx").then((module) => ({ default: module.TermsPage })));
+const Analytics = lazy(() => import("@vercel/analytics/react").then((module) => ({ default: module.Analytics })));
 
 function AdminFallback() {
   return (
@@ -50,7 +50,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="*" element={<NotFound />} />
         </Routes>
       </GlobalErrorBoundary>
-      {import.meta.env.VITE_ENABLE_ANALYTICS !== "false" && <Analytics />}
+      {import.meta.env.VITE_ENABLE_ANALYTICS === "true" && (
+        <Suspense fallback={null}>
+          <Analytics />
+        </Suspense>
+      )}
     </BrowserRouter>
   </React.StrictMode>
 );

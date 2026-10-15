@@ -192,7 +192,7 @@ export default function MediaLibrary() {
           {items.map((media) => (
             <li key={media._id} className="ff-media-card">
               <div className="ff-media-card-thumb">
-                <img src={resolveUploadUrl(media.url)} alt={media.alt || media.originalName || ""} loading="lazy" />
+                <img src={resolveUploadUrl(media.url)} alt={media.alt || media.originalName || ""} width="600" height="600" loading="lazy" decoding="async" />
               </div>
               <div className="ff-media-card-body">
                 <p className="ff-media-card-filename" title={media.originalName || media.filename}>

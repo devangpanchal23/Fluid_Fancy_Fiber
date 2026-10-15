@@ -102,7 +102,7 @@ export default function VariantList() {
                 <tr key={v._id}>
                   <td>
                     {v.images?.[0]?.url ? (
-                      <img src={resolveSrc(v.images[0].url)} alt={v.images[0].alt || ""} className="ff-admin-table-thumb" />
+                      <img src={resolveSrc(v.images[0].url)} alt={v.images[0].alt || ""} width="120" height="90" loading="lazy" decoding="async" className="ff-admin-table-thumb" />
                     ) : (
                       <span className="ff-admin-table-thumb ff-admin-table-thumb--empty" />
                     )}

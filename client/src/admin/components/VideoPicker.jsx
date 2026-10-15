@@ -255,7 +255,7 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
                           aria-pressed={isSelected}
                         >
                           {asset.thumbnail?.url ? (
-                            <img src={resolveUploadUrl(asset.thumbnail.url)} alt="" loading="lazy" />
+                            <img src={resolveUploadUrl(asset.thumbnail.url)} alt="" width="640" height="360" loading="lazy" decoding="async" />
                           ) : (
                             <video src={resolveUploadUrl(asset.url)} muted preload="metadata" />
                           )}

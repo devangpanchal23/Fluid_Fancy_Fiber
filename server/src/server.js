@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { app } from "./app.js";
 import { connectDB, isDbConnected } from "./config/db.js";
 import { ensurePortAvailable } from "./utils/portHelper.js";
+import { syncAdminCredentials } from "./utils/syncAdminCredentials.js";
 
 const PORT = Number(process.env.PORT) || 5001;
 
@@ -41,6 +42,14 @@ async function start() {
 
   // Attempt initial DB connection (non-fatal if temporarily offline)
   await attemptDbConnection();
+  if (isDbConnected() && (process.env.ADMIN_EMAIL || process.env.ADMIN_PASSWORD)) {
+    try {
+      const result = await syncAdminCredentials();
+      console.log(`[server] Admin credentials sync: ${result.status}.`);
+    } catch (err) {
+      console.error("[server] Admin credential sync failed:", err.message);
+    }
+  }
 
   server = app.listen(PORT, () => {
     console.log(`[server] listening on http://localhost:${PORT}`);

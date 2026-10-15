@@ -261,14 +261,14 @@ Vercel serverless functions (this app's deployment target — see `vercel.json`)
 | `CLIENT_ORIGIN`  | Allowed CORS origin (the deployed frontend URL) | `http://localhost:5173`                          |
 | `JWT_SECRET`     | Signs admin session tokens — must be a long random string, never reused/guessable | generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `NODE_ENV`       | `production` makes the session cookie `secure` (HTTPS-only) | `development` locally, `production` on Vercel |
-| `ADMIN_EMAIL`    | Used only by `npm run seed:admin` to create/update the admin account (default `admin@gmail.com`) | `admin@gmail.com` |
-| `ADMIN_PASSWORD` | Used only by `npm run seed:admin`. **Quote it** if it contains `#` or other special characters — dotenv treats an unquoted `#` as a comment and silently truncates the value | `"a-strong-password-#123"` |
+| `ADMIN_EMAIL`    | Optional admin login email. When set with `ADMIN_PASSWORD`, the server syncs the persistent admin account on startup | `admin@example.com` |
+| `ADMIN_PASSWORD` | Optional admin login password. Set together with `ADMIN_EMAIL`; quote it if it contains `#` or other special characters in `.env` | `"a-strong-password-#123"` |
 | `ADMIN_NAME`     | Optional display name for the seeded admin     | `Admin` |
 | `EMAIL_USER`     | Gmail address used to send contact-form/spec-sheet notifications (optional — see [Email Notifications](#email-notifications)) | `you@gmail.com` |
 | `EMAIL_PASS`     | A Gmail **App Password** for that account, not its regular password. Quote it — it contains spaces | `"abcd efgh ijkl mnop"` |
 | `NOTIFY_EMAIL`   | Who receives the notification. Defaults to `EMAIL_USER` if unset | `fluidfancyenterprisepvtltd@gmail.com` |
 
-`.env` files are git-ignored; only `.env.example` files are committed. No real credentials are present in this repository. `ADMIN_EMAIL`/`ADMIN_PASSWORD` are read only by the one-off seed script, not at request time — safe to remove from `.env` after seeding.
+`.env` files are git-ignored; only `.env.example` files are committed. No real credentials are present in this repository. When both admin variables are set, the server syncs them into MongoDB on startup and once per Vercel function instance. Updating them in the deployment environment and redeploying updates the login credentials. If neither is set, the saved account remains unchanged. Setting only one is a configuration error.
 
 ## Installation
 
@@ -289,14 +289,14 @@ Edit `server/.env` and set `MONGODB_URI` to a local MongoDB instance or a MongoD
 
 ## Admin Setup
 
-The admin account isn't created by signing up — it's seeded by a script. The default login is **`admin@gmail.com` / `admin123`**; set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `server/.env` to override it. With `MONGODB_URI` configured:
+The admin account isn't created by signing up. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` together in `server/.env` or the deployment environment. The server syncs them into MongoDB at startup. With `MONGODB_URI` configured:
 
 ```bash
 cd server
 npm run seed:admin
 ```
 
-To apply it to the live site, run the same command with `MONGODB_URI` pointing at the production database (e.g. `MONGODB_URI="<production uri>" npm run seed:admin`).
+For a live deployment, configure both values in the hosting environment and redeploy. The server applies them automatically. The seed command remains available for manual setup.
 
 Re-running it is safe — it updates the existing account (including its email, if that changed) instead of creating a duplicate. Then log in at `http://localhost:5173/admin` (or your deployed domain + `/admin`) with those credentials.
 
@@ -372,7 +372,7 @@ The whole project deploys as a **single Vercel project**: the `client/` app buil
 | `JWT_SECRET`     | Vercel project | A long random secret (see the [Environment Variables](#environment-variables) table for how to generate one) — **required** for admin login to work at all. |
 | `NODE_ENV`       | Vercel project | Vercel sets this to `production` automatically; the session cookie is only ever `secure` (HTTPS-only) in that environment. |
 
-`api/index.js` checks for `MONGODB_URI` at request time: if it's missing, `/api/health` still responds normally, but every database-backed route (`/api/enquiries`, `/api/products`, `/api/categories`, `/api/admin/*`) returns `503` with a clear "not configured" error instead of crashing — so the frontend can deploy and go live before the database is wired up. Once `MONGODB_URI` and `JWT_SECRET` are set and the project is redeployed, run `npm run seed:admin` and `npm run migrate:products` **locally, pointed at that same production database** (temporarily set `MONGODB_URI` in your shell, or in `server/.env`, to the production connection string) to create the admin account and seed the catalogue.
+`api/index.js` checks for `MONGODB_URI` at request time: if it's missing, `/api/health` still responds normally, but every database-backed route (`/api/enquiries`, `/api/products`, `/api/categories`, `/api/admin/*`) returns `503` with a clear "not configured" error instead of crashing. Once `MONGODB_URI`, `JWT_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` are configured, the API creates or updates the admin account automatically. Run `npm run migrate:products` locally against the production database to seed the catalogue.
 
 ## Email Notifications
 

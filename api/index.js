@@ -3,6 +3,9 @@
 // business-logic duplication, just a different way to invoke it.
 import { app } from "../server/src/app.js";
 import { connectDB } from "../server/src/config/db.js";
+import { syncAdminCredentials } from "../server/src/utils/syncAdminCredentials.js";
+
+let adminCredentialSync;
 
 // Before the Express app has touched `res`, it's a plain Node ServerResponse
 // (no .status()/.json() helpers) — use the raw Node API for early returns.
@@ -34,6 +37,20 @@ export default async function handler(req, res) {
     // fast (and clearly) for anything that needs the database.
     unavailable(res, "Backend is not fully configured: MONGODB_URI is not set.");
     return;
+  }
+
+  // Vercel instances are reused, so reconcile once per instance after its DB
+  // connection is ready. A redeploy starts fresh instances with new env vars.
+  if (process.env.ADMIN_EMAIL || process.env.ADMIN_PASSWORD) {
+    try {
+      adminCredentialSync ||= syncAdminCredentials();
+      await adminCredentialSync;
+    } catch (err) {
+      adminCredentialSync = null;
+      console.error("[api] Admin credential sync failed:", err.message);
+      unavailable(res, "Admin account configuration is invalid.");
+      return;
+    }
   }
 
   app(req, res);

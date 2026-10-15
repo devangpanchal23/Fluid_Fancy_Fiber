@@ -49,7 +49,7 @@ async function validateImage(image, errors) {
 export async function listConeProducts(req, res, next) {
   try {
     noStore(res);
-    const all = (await ConeProduct.find()).sort(displayCompare);
+    const all = (await ConeProduct.find().limit(500).lean()).sort(displayCompare);
     // A product whose image was force-removed from the Media Library can't be
     // rendered, so the public site skips it; the admin still sees it to fix.
     const items = req.admin ? all : all.filter((p) => p.image?.url);

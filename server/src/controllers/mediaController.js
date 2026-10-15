@@ -22,7 +22,8 @@ export async function listMedia(req, res, next) {
       Media.find(filter)
         .sort({ createdAt: -1 })
         .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Media.countDocuments(filter)
     ]);
 

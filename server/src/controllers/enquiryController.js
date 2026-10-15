@@ -42,7 +42,8 @@ export async function listEnquiries(req, res, next) {
     if (type) filter.type = type;
     if (status) filter.status = status;
     if (q && String(q).trim()) {
-      const re = new RegExp(String(q).trim(), "i");
+      const safeQuery = [...String(q).trim()].map((character) => "\\.^$|?*+()[]{}".includes(character) ? "\\" + character : character).join("");
+      const re = new RegExp(safeQuery, "i");
       filter.$or = [{ name: re }, { company: re }, { email: re }, { message: re }];
     }
 
@@ -53,7 +54,8 @@ export async function listEnquiries(req, res, next) {
       Enquiry.find(filter)
         .sort({ createdAt: -1 })
         .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Enquiry.countDocuments(filter)
     ]);
 

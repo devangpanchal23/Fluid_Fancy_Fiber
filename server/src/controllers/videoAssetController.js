@@ -37,7 +37,8 @@ export async function listVideoAssets(req, res, next) {
       VideoAsset.find(filter)
         .sort({ createdAt: -1 })
         .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       VideoAsset.countDocuments(filter)
     ]);
 

@@ -41,7 +41,13 @@ export async function connectDB() {
     mongoose.set("strictQuery", true);
     connectPromise = mongoose
       .connect(uri, {
-        serverSelectionTimeoutMS: 5000
+        appName: "fluid-fancy-fibre-website",
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+        maxIdleTimeMS: 45000,
+        minPoolSize: 0,
+        maxPoolSize: Math.max(1, Math.min(20, Number(process.env.MONGODB_MAX_POOL_SIZE) || 5))
       })
       .then((conn) => {
         console.log("[db] connected to MongoDB");

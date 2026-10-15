@@ -44,7 +44,7 @@ export async function listPersons(req, res, next) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
 
-    const all = (await Person.find(filter)).sort(displayCompare);
+    const all = (await Person.find(filter).limit(500).lean()).sort(displayCompare);
     const items = all.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
     res.json({

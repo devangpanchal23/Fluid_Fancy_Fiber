@@ -24,7 +24,8 @@ export async function listVideos(req, res, next) {
       Video.find(filter)
         .sort(sort)
         .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Video.countDocuments(filter)
     ]);
 

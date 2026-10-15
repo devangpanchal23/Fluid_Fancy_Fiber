@@ -69,14 +69,16 @@ export default function SpecModal({ isOpen, title, lineName, onClose }) {
         </p>
 
         {sent ? (
-          <div className="ff-modal-success">Sent. Check your inbox in the next few minutes.</div>
+          <div className="ff-modal-success" role="status" aria-live="polite">
+            The brochure link is on its way to your inbox.
+          </div>
         ) : (
           <form className="ff-modal-form" onSubmit={onSubmit} noValidate>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@mill.com"
+              placeholder="Enter your email here"
               className={error ? "has-error" : ""}
             />
             {error && <span className="ff-modal-error">{error}</span>}

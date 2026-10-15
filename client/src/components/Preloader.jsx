@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { images } from "../assets/images";
 
 export default function Preloader({ onDone }) {
   const [pct, setPct] = useState(0);
   const [exiting, setExiting] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   // Keep the page from scrolling behind the loader.
   useEffect(() => {
@@ -21,7 +23,7 @@ export default function Preloader({ onDone }) {
       setExiting(true);
       const t = setTimeout(() => {
         setHidden(true);
-        onDone?.();
+        onDoneRef.current?.();
       }, 50);
       return () => clearTimeout(t);
     }
@@ -38,13 +40,12 @@ export default function Preloader({ onDone }) {
         setTimeout(() => setExiting(true), 140);
         setTimeout(() => {
           setHidden(true);
-          onDone?.();
+          onDoneRef.current?.();
         }, 1050);
       }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (hidden) return null;

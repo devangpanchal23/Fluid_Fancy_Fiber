@@ -39,7 +39,7 @@ export default function ProductList() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [q, status, category, sort, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [q, status, category, sort, page]);
 
   function resetPage(setter) {
     return (value) => {

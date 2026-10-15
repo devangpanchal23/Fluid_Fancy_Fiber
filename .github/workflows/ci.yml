@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+            server/package-lock.json
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix client
+          npm ci --prefix server
+      - name: Lint client and server
+        run: npm run lint
+      - name: Check server JavaScript syntax
+        run: npm run check:js
+      - name: Run client tests
+        run: npm test --prefix client
+      - name: Run server tests
+        run: npm test --prefix server
+        env:
+          TEST_MONGODB_URI: mongodb://127.0.0.1:27017/fluid_fibers_ci_test
+      - name: Build production client
+        run: npm run build

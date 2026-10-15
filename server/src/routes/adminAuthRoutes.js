@@ -11,7 +11,11 @@ const loginLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: "Too many login attempts. Please try again later." }
+  handler: (req, res) => res.status(429).json({
+    success: false,
+    code: "RATE_LIMITED",
+    message: "Too many login attempts. Please try again later."
+  })
 });
 
 // Profile endpoints re-check the current password, so they get their own
@@ -21,7 +25,11 @@ const profileLimiter = rateLimit({
   limit: Number(process.env.PROFILE_RATE_LIMIT) || 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: "Too many attempts. Please try again later." }
+  handler: (req, res) => res.status(429).json({
+    success: false,
+    code: "RATE_LIMITED",
+    message: "Too many attempts. Please try again later."
+  })
 });
 
 router.post("/login", loginLimiter, login);

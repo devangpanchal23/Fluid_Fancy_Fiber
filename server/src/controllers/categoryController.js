@@ -6,7 +6,7 @@ export async function listCategories(req, res, next) {
   try {
     const filter = {};
     if (req.query.activeOnly === "true") filter.isActive = true;
-    const categories = await Category.find(filter).sort({ order: 1, name: 1 });
+    const categories = await Category.find(filter).sort({ order: 1, name: 1 }).limit(200).lean();
     res.json({ success: true, data: { categories } });
   } catch (err) {
     next(err);

@@ -14,7 +14,11 @@ const submitLimiter = rateLimit({
   limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many requests. Please try again later." }
+  handler: (req, res) => res.status(429).json({
+    success: false,
+    code: "RATE_LIMITED",
+    message: "Too many requests. Please try again later."
+  })
 });
 
 router.post("/", submitLimiter, validateEnquiry, createEnquiry);

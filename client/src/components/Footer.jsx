@@ -1,5 +1,6 @@
 import { images } from "../assets/images";
 import { FOOTER_COLUMNS } from "../data/content";
+import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
@@ -24,6 +25,7 @@ export default function Footer() {
       </div>
       <div className="ff-footer-bottom">
         <span>© {new Date().getFullYear()} Fluid Fancy Fibre LLP</span>
+        <span className="ff-footer-legal"><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></span>
       </div>
     </footer>
   );

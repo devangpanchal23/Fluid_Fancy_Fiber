@@ -65,7 +65,7 @@ export default function MediaLibrary() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [q, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [q, page]);
 
   function resetPage(setter) {
     return (value) => {

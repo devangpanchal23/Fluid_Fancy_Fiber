@@ -57,10 +57,10 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
   const base = `http://127.0.0.1:${port}`;
 
   let cookie = "";
-  async function req(path, { method = "GET", body } = {}) {
+  async function req(path, { method = "GET", body, headers = {} } = {}) {
     const res = await fetch(`${base}${path}`, {
       method,
-      headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
+      headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}), ...headers },
       body: body ? JSON.stringify(body) : undefined
     });
     const setCookie = res.headers.get("set-cookie");
@@ -74,7 +74,7 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
   // admin image picker.
   async function upload(path, filename = "test-upload.png") {
     const form = new FormData();
-    form.append("image", new Blob(["test image bytes"], { type: "image/png" }), filename);
+    form.append("image", new Blob([Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("test image bytes")])], { type: "image/png" }), filename);
     const res = await fetch(`${base}${path}`, {
       method: "POST",
       headers: cookie ? { Cookie: cookie } : undefined,
@@ -304,12 +304,23 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     assert.equal(r.data.data.product.status, "archived");
   });
 
-  await t.test("public enquiry submission works without auth", async () => {
+  await t.test("public enquiry submission is idempotent without auth", async () => {
     const savedCookie = cookie;
     cookie = "";
-    const r = await req("/api/enquiries", { method: "POST", body: { type: "contact", name: "T", company: "C", email: "test-enquiry@example.com", message: "hi" } });
+    const body = { type: "contact", name: "T", company: "C", email: "test-enquiry@example.com", message: "hi" };
+    const headers = { "Idempotency-Key": "cb7cb76c-2604-4f85-b137-eeb04ab21365" };
+    const r = await req("/api/enquiries", { method: "POST", body, headers });
+    const retry = await req("/api/enquiries", { method: "POST", body, headers });
+    const conflict = await req("/api/enquiries", { method: "POST", body: { ...body, message: "changed" }, headers });
     cookie = savedCookie;
     assert.equal(r.status, 201);
+    assert.equal(retry.status, 201);
+    assert.equal(retry.data.id, r.data.id);
+    assert.equal(conflict.status, 409);
+    const spam = await req("/api/enquiries", { method: "POST", body: { ...body, email: "bot@example.com", website: "filled by bot" } });
+    assert.equal(spam.status, 400);
+    assert.equal(await Enquiry.countDocuments({ email: body.email }), 1);
+    assert.equal(await Enquiry.countDocuments({ email: "bot@example.com" }), 0);
   });
 
   await t.test("admin can list and update enquiry status", async () => {

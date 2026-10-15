@@ -1,22 +1,18 @@
 // Creates (or updates the credentials of) the single admin account. Uses
-// ADMIN_EMAIL / ADMIN_PASSWORD from the environment, falling back to the
-// default login below. Run with: npm run seed:admin
+// ADMIN_EMAIL / ADMIN_PASSWORD from the environment. Run with: npm run seed:admin
 // Point MONGODB_URI at the production database to apply it to the live site.
 import "dotenv/config";
 import mongoose from "mongoose";
 import Admin from "../models/Admin.js";
 import { connectDB } from "../config/db.js";
 
-const DEFAULT_EMAIL = "admin@gmail.com";
-const DEFAULT_PASSWORD = "admin123";
-
 async function main() {
-  const email = (process.env.ADMIN_EMAIL || DEFAULT_EMAIL).trim().toLowerCase();
-  const password = process.env.ADMIN_PASSWORD || DEFAULT_PASSWORD;
+  const email = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || "";
   const name = process.env.ADMIN_NAME || "Admin";
 
-  if (password.length < 8) {
-    console.error("[seed:admin] ADMIN_PASSWORD must be at least 8 characters.");
+  if (!/^\S+@\S+\.\S+$/.test(email) || password.length < 8) {
+    console.error("[seed:admin] Set a valid ADMIN_EMAIL and an ADMIN_PASSWORD of at least 8 characters.");
     process.exit(1);
   }
 

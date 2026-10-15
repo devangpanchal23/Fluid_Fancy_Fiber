@@ -3,9 +3,14 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import App from "./App.jsx";
+import NotFound from "./components/NotFound.jsx";
+import GlobalErrorBoundary from "./components/GlobalErrorBoundary.jsx";
+import PageMetadata from "./components/PageMetadata.jsx";
 import "./index.css";
 
 const AdminApp = lazy(() => import("./admin/AdminApp.jsx"));
+const PrivacyPage = lazy(() => import("./components/LegalPage.jsx").then((module) => ({ default: module.PrivacyPage })));
+const TermsPage = lazy(() => import("./components/LegalPage.jsx").then((module) => ({ default: module.TermsPage })));
 
 function AdminFallback() {
   return (
@@ -28,18 +33,24 @@ function AdminFallback() {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route
-          path="/admin/*"
-          element={
-            <Suspense fallback={<AdminFallback />}>
-              <AdminApp />
-            </Suspense>
-          }
-        />
-      </Routes>
-      <Analytics />
+      <GlobalErrorBoundary>
+        <PageMetadata />
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/privacy" element={<Suspense fallback={<div className="ff-section" aria-busy="true">Loading page…</div>}><PrivacyPage /></Suspense>} />
+          <Route path="/terms" element={<Suspense fallback={<div className="ff-section" aria-busy="true">Loading page…</div>}><TermsPage /></Suspense>} />
+          <Route
+            path="/admin/*"
+            element={
+              <Suspense fallback={<AdminFallback />}>
+                <AdminApp />
+              </Suspense>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </GlobalErrorBoundary>
+      {import.meta.env.VITE_ENABLE_ANALYTICS !== "false" && <Analytics />}
     </BrowserRouter>
   </React.StrictMode>
 );

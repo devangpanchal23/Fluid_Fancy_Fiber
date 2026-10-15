@@ -33,7 +33,7 @@ export default function VariantList() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [productId]);
 
   async function toggleActive(variant) {
     try {

@@ -22,7 +22,7 @@ export default function VideoList() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, []);
 
   async function togglePublished(video) {
     try {

@@ -8,9 +8,9 @@ import { useEffect } from "react";
 // (anything that appears after an API fetch, e.g. the People section). A
 // MutationObserver watches for those late arrivals; without it they stay
 // invisible forever.
-export function useReveal(containerRef, deps = []) {
+export function useReveal(containerRef) {
+  const root = containerRef?.current || document;
   useEffect(() => {
-    const root = containerRef?.current || document;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const io = reduceMotion
@@ -70,6 +70,5 @@ export function useReveal(containerRef, deps = []) {
       io?.disconnect();
       timers.forEach(clearTimeout);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [root]);
 }

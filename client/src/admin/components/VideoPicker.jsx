@@ -64,8 +64,7 @@ export default function VideoPicker({ open, onClose, onConfirm }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tab, q, page]);
+  }, [open, tab, q, page, toast]);
 
   useEffect(() => {
     if (!open) return undefined;

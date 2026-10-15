@@ -35,9 +35,79 @@ const allowedOrigins = new Set([
 
 export const app = express();
 
+function requestOrigin(req) {
+  const configuredSite = String(process.env.VITE_SITE_URL || "").trim();
+  try {
+    const parsed = new URL(configuredSite);
+    if (parsed.protocol === "https:") return parsed.origin;
+  } catch {
+    // Use the validated request host when the optional canonical URL is unset.
+  }
+  const host = String(req.get("host") || "").toLowerCase();
+  const safeHost = /^(?:[a-z0-9.-]+|\[[a-f\d:]+\])(?::\d{1,5})?$/.test(host) ? host : "localhost";
+  const protocol = process.env.NODE_ENV === "production" ? "https" : req.protocol;
+  return `${protocol}://${safeHost}`;
+}
+
 // Required behind Vercel's proxy (and any reverse proxy) so express-rate-limit
 // reads the real client IP from X-Forwarded-For instead of the proxy's IP.
 app.set("trust proxy", 1);
+
+app.use((req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "script-src 'self' https://va.vercel-scripts.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com",
+      "frame-src https://drive.google.com https://www.google.com"
+    ].join("; ")
+  });
+  if (process.env.NODE_ENV === "production") {
+    res.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  }
+  next();
+});
+
+app.use("/api", (req, res, next) => {
+  const sendJson = res.json.bind(res);
+  res.json = (payload) => {
+    if (res.statusCode < 400) return sendJson(payload);
+    const codeByStatus = {
+      400: "INVALID_REQUEST",
+      401: "UNAUTHENTICATED",
+      403: "FORBIDDEN",
+      404: "NOT_FOUND",
+      409: "CONFLICT",
+      413: "PAYLOAD_TOO_LARGE",
+      429: "RATE_LIMITED",
+      503: "SERVICE_UNAVAILABLE"
+    };
+    const message = typeof payload?.message === "string"
+      ? payload.message
+      : typeof payload?.error === "string"
+        ? payload.error
+        : "The request could not be completed. Please try again.";
+    return sendJson({
+      ...(payload && typeof payload === "object" ? payload : {}),
+      success: false,
+      code: payload?.code || codeByStatus[res.statusCode] || "REQUEST_FAILED",
+      message,
+      error: payload?.error || message
+    });
+  };
+  next();
+});
 
 // credentials: true is required so the browser sends/receives the admin
 // session cookie across origins in local dev (client :5173, server :5001).
@@ -46,16 +116,14 @@ app.use(
     origin: (origin, callback) => {
       // allow requests with no origin (like mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
-      let hostname = "";
       try {
-        hostname = new URL(origin).hostname;
-      } catch {}
+        new URL(origin);
+      } catch {
+        return callback(null, false);
+      }
       if (
         allowedOrigins.has(origin) ||
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
-        hostname.endsWith(".vercel.app") ||
-        hostname === "fluidfancyenterprise.com" ||
-        hostname.endsWith(".fluidfancyenterprise.com")
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
       ) {
         return callback(null, true);
       }
@@ -80,10 +148,27 @@ app.get("/uploads/:filename", serveImage);
 // /uploads/:filename above (see vercel.json).
 app.get("/video-uploads/:id", streamVideo);
 
+app.get(["/api/robots.txt", "/robots.txt"], (req, res) => {
+  res.type("text/plain").set("Cache-Control", "public, max-age=3600").send(
+    `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\nSitemap: ${requestOrigin(req)}/sitemap.xml\n`
+  );
+});
+
+app.get(["/api/sitemap.xml", "/sitemap.xml"], (req, res) => {
+  const origin = requestOrigin(req);
+  const urls = ["/", "/privacy", "/terms"];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls
+    .map((path) => `<url><loc>${origin}${path}</loc></url>`)
+    .join("")}</urlset>`;
+  res.type("application/xml").set("Cache-Control", "public, max-age=3600").send(xml);
+});
+
 app.get("/api/health", (req, res) => {
   const dbConnected = isDbConnected();
-  res.json({
-    ok: true,
+  res.status(dbConnected ? 200 : 503).json({
+    success: dbConnected,
+    code: dbConnected ? "OK" : "DATABASE_UNAVAILABLE",
+    ok: dbConnected,
     service: "fluid-fibers-api",
     database: dbConnected ? "connected" : "disconnected"
   });
@@ -93,16 +178,17 @@ app.get("/api/health", (req, res) => {
 // if still unavailable, return 503 instead of crashing or hanging the request.
 app.use("/api", async (req, res, next) => {
   if (req.path === "/health") return next();
+  const knownApiPath = [
+    "/enquiries", "/admin", "/products", "/categories", "/people", "/uploads",
+    "/media", "/variants", "/videos", "/video-assets", "/cone-library"
+  ].some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`));
+  if (!knownApiPath) return next();
   if (isDbConnected()) return next();
   try {
     await connectDB();
     next();
-  } catch {
-    return res.status(503).json({
-      success: false,
-      error: "Database temporarily unavailable. Please retry in a moment.",
-      message: "Database temporarily unavailable. Please retry in a moment."
-    });
+  } catch (err) {
+    return next(Object.assign(new Error("Database unavailable"), { status: 503, cause: err }));
   }
 });
 

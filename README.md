@@ -52,7 +52,8 @@ The catalogue shown on the public site is now backed by MongoDB — products are
 - Vite 8 (`@vitejs/plugin-react`)
 - `react-router-dom` 7 — only used to separate `/` (public site) from `/admin/*` (CMS); the public site itself still has no in-page routing
 - Plain CSS with design tokens (CSS custom properties) — no UI/component framework, no Bootstrap/Tailwind. The admin CMS reuses the exact same tokens via its own `admin.css` (loaded only on `/admin` routes)
-- ESLint (flat config not yet present — see [Known Issues](#known-issues))
+- ESLint 9 flat config with React and Hooks rules (`npm run lint --prefix client`)
+- JavaScript server syntax check (`npm run check:js`)
 
 **Backend (`server/`)**
 - Node.js + Express 4
@@ -64,7 +65,7 @@ The catalogue shown on the public site is now backed by MongoDB — products are
 - `cors` (origin restricted to the configured client URL, `credentials: true` for the session cookie)
 - `express-rate-limit` — 20 requests/15 min on the public enquiry-submission endpoint, 10 requests/15 min on admin login (separate limiters; the admin CMS's own authenticated calls are not throttled by either)
 - `dotenv` for environment configuration
-- `nodemon` for local development
+- Node.js watch mode for local server development
 
 **Database**
 - MongoDB, four collections:
@@ -250,7 +251,9 @@ Vercel serverless functions (this app's deployment target — see `vercel.json`)
 
 | Variable         | Description                                  | Example                        |
 |------------------|-----------------------------------------------|---------------------------------|
-| `VITE_API_URL`   | Base URL of the backend API                  | `http://localhost:5001/api`    |
+| `VITE_API_URL`   | Base URL of the backend API. Usually omit on Vercel to use same-origin `/api`. | `http://localhost:5001/api` |
+| `VITE_SITE_URL` | Production canonical site origin, used for canonical metadata and sitemap URLs. Do not set to a Preview host. | `https://your-domain.example` |
+| `VITE_ENABLE_ANALYTICS` | Set to `false` to disable Vercel Analytics. Enabled by default. | `true` |
 
 **`server/.env`** (copy from `server/.env.example`)
 
@@ -261,8 +264,8 @@ Vercel serverless functions (this app's deployment target — see `vercel.json`)
 | `CLIENT_ORIGIN`  | Allowed CORS origin (the deployed frontend URL) | `http://localhost:5173`                          |
 | `JWT_SECRET`     | Signs admin session tokens — must be a long random string, never reused/guessable | generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `NODE_ENV`       | `production` makes the session cookie `secure` (HTTPS-only) | `development` locally, `production` on Vercel |
-| `ADMIN_EMAIL`    | Optional admin login email. When set with `ADMIN_PASSWORD`, the server syncs the persistent admin account on startup | `admin@example.com` |
-| `ADMIN_PASSWORD` | Optional admin login password. Set together with `ADMIN_EMAIL`; quote it if it contains `#` or other special characters in `.env` | `"a-strong-password-#123"` |
+| `ADMIN_EMAIL`    | Optional admin login email. When set with `ADMIN_PASSWORD`, the server syncs the persistent admin account on startup. No default account is created. | `admin@example.com` |
+| `ADMIN_PASSWORD` | Optional admin login password. Set together with `ADMIN_EMAIL`; must be at least 8 characters. | `"a-strong-password-#123"` |
 | `ADMIN_NAME`     | Optional display name for the seeded admin     | `Admin` |
 | `BROCHURE_SENDER_EMAIL` | Gmail address used to send enquiry notifications and brochures (legacy `EMAIL_USER` is also supported) | `you@gmail.com` |
 | `BROCHURE_SENDER_APP_PASSWORD` | Gmail **App Password** for the sender account, not its regular password. Legacy `EMAIL_PASS` is also supported | `"your-app-password"` |
@@ -367,17 +370,19 @@ The whole project deploys as a **single Vercel project**: the `client/` app buil
 
 | Variable         | Where          | Value                                                                 |
 |------------------|----------------|-------------------------------------------------------------------------|
-| `MONGODB_URI`    | Vercel project | A MongoDB connection string (e.g. MongoDB Atlas). **Not yet configured** — see [Known Issues](#known-issues). |
-| `CLIENT_ORIGIN`  | Vercel project | The deployed site's own URL (CORS is same-origin in this single-project setup, so this mainly matters if the API is ever called cross-origin). |
-| `VITE_API_URL`   | Vercel project | `/api` — same-origin, so a relative path is enough; no absolute cross-origin URL needed. |
-| `JWT_SECRET`     | Vercel project | A long random secret (see the [Environment Variables](#environment-variables) table for how to generate one) — **required** for admin login to work at all. |
-| `NODE_ENV`       | Vercel project | Vercel sets this to `production` automatically; the session cookie is only ever `secure` (HTTPS-only) in that environment. |
+| `MONGODB_URI` | Vercel project | Existing MongoDB Atlas connection string, required for database-backed routes. |
+| `JWT_SECRET` | Vercel project | Long random secret required for admin login. |
+| `BROCHURE_SENDER_EMAIL` | Vercel project | Gmail address that sends requested spec sheet links. |
+| `BROCHURE_SENDER_APP_PASSWORD` | Vercel Secret | Gmail App Password, never a regular Gmail password. |
+| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | Vercel project | Optional pair synchronized to the single admin record on a fresh serverless instance. |
+| `VITE_SITE_URL` | Vercel project | Recommended production origin for canonical tags and structured URLs. Never use a Preview URL. |
+| `VITE_API_URL` | Vercel project | Usually omitted; the app uses same-origin `/api`. |
 
-`api/index.js` checks for `MONGODB_URI` at request time: if it's missing, `/api/health` still responds normally, but every database-backed route (`/api/enquiries`, `/api/products`, `/api/categories`, `/api/admin/*`) returns `503` with a clear "not configured" error instead of crashing. Once `MONGODB_URI`, `JWT_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` are configured, the API creates or updates the admin account automatically. Run `npm run migrate:products` locally against the production database to seed the catalogue.
+`/api/health` returns `503` when MongoDB is unavailable. Other database-backed routes also fail with a friendly `503` response. Never point tests or local scripts at production unless a deliberate, reviewed operation requires it.
 
 ## Email Notifications
 
-When a visitor requests a spec sheet or submits the quote enquiry form, the request is saved to MongoDB and the brochure link is emailed to the address they entered. The team also receives an enquiry notification at `NOTIFY_EMAIL`. Set `SPEC_SHEET_URL` to change the brochure link without editing code.
+When a visitor requests a spec sheet, the request is saved to MongoDB and the brochure link is emailed to the address they entered. A contact enquiry is saved and the team notification is sent best-effort. Set `SPEC_SHEET_URL` to change the brochure link without editing code.
 
 The customer brochure email is required for a successful spec sheet response. If email settings are missing or the send fails, the API returns an error so the form does not claim it was sent. The submission remains saved in MongoDB. Team notifications remain best-effort and do not affect the visitor response.
 
@@ -385,26 +390,23 @@ The Drive PDF must be available to the recipients, for example with Google Drive
 
 Setup: enable 2-Step Verification on the sending Gmail account, generate an **App Password** (Google Account → Security → App passwords — a 16-character code, not your login password), and set `BROCHURE_SENDER_EMAIL`/`BROCHURE_SENDER_APP_PASSWORD`/`NOTIFY_EMAIL`/`SPEC_SHEET_URL` in the deployment environment (see [Environment Variables](#environment-variables)).
 
-## Known Issues
+## Known limitations
 
-- **The production database is not yet wired up.** No `MONGODB_URI`/`JWT_SECRET` have been configured in the Vercel project, so on the live deployment `/api/health` works but every database-backed route (enquiries, products, categories, admin login) returns `503`. See [Deployment](#deployment) for the exact steps to finish this.
-- `PUT/DELETE /api/products/:id`, `/api/categories/:id`, `/api/enquiries/:id` etc. all require the admin session cookie now — this was previously unauthenticated for enquiries and did not exist at all for products/categories.
-- The `Variant.images`/`Category.image`/`Person.image` fields store `{ url, alt }` pairs (a URL, or one of the bundled asset keys `hero`/`mill`/`logo` for content migrated from the original static site) rather than binary data — see [Image Uploads](#image-uploads) for how uploads work and their production caveat.
-- Team email notifications are best-effort. Spec sheet requests return an error if the customer brochure email cannot be sent; the request itself remains saved.
-- No ESLint v9 flat config (`eslint.config.js`) exists yet in `client/`, so `npm run lint` cannot currently run.
-- A dependency-tree `qs` package (a transitive dependency of Express itself, not something this project imports directly) has a known moderate-severity advisory; `npm audit fix` doesn't resolve it without an Express major-version bump, which was judged out of scope here.
+- Deployed Vercel environment values, the custom domain, Atlas network access and the production preview could not be inspected from this local workspace. Verify them with the [deployment runbook](DEPLOYMENT.md).
+- Lighthouse and real device measurements require a deployed URL or browser profile. The local bundle report is recorded in `FINAL_REPORT.md`; no Lighthouse score is claimed without a run.
+- Image and video bytes are stored in MongoDB/Atlas. Monitor Atlas storage and connection capacity as the media library grows.
+- Public spec sheet requests return a delivery error if email sending fails; the enquiry record remains saved for follow-up.
 
 ## Image Uploads
 
 The admin CMS uploads image files directly (Variants, Categories, People, video thumbnails) via `POST /api/uploads` (multipart, field name `image`, JPEG/PNG/WEBP/GIF only, 5MB max — enforced both client- and server-side). The bytes are stored directly on a `Media` document in MongoDB (see `imageStorage.js`) and served back from `GET /uploads/<filename>`; `Variant.images`/`Category.image`/`Person.image`/`Video.thumbnail` store the resulting `{ url, alt }`. Video *files themselves* don't go through this endpoint at all — they're far larger than the 5MB image cap, so they go through the Video Library's own GridFS-backed chunked upload instead — see [Video Gallery](#video-gallery).
 
-**This works in local dev and on traditional (non-serverless) hosting, but not durably on Vercel production** — serverless functions have no persistent or shared filesystem, so a file uploaded in one invocation is not guaranteed to be there for the next. The storage layer is deliberately isolated in `server/src/utils/imageStorage.js` (`saveImage`/`deleteImage`) so swapping in a real provider (Cloudinary, Vercel Blob, S3, Supabase Storage, …) before going live is a change to that one file only — every controller and admin component already only depends on the `{ url, filename }` shape it returns.
+Image bytes are stored in MongoDB, so uploads survive Vercel's stateless serverless instances. Monitor database storage as the media library grows.
 
 ## Future Improvements
 
-- Wire up a real object-storage provider for production uploads (see [Image Uploads](#image-uploads)).
-- Add an ESLint flat config for the client.
-- A client-side test suite (component tests for the admin CMS) — the server has one now (see [Testing](#testing)), the client doesn't yet.
+- Add component-level browser tests for the public and admin UI.
+- Run Lighthouse against the production domain after confirming Vercel and Atlas configuration.
 - Support multiple admin accounts / roles (currently a single shared admin account, by design, per the "no public signup" requirement).
 
 ## Author

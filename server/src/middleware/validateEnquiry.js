@@ -1,7 +1,11 @@
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export function validateEnquiry(req, res, next) {
-  const { type = "contact", name, company, email, message, lineName } = req.body || {};
+  const { type = "contact", name, company, email, message, lineName, website } = req.body || {};
+
+  if (typeof website === "string" && website.trim()) {
+    return res.status(400).json({ error: "Could not process this request." });
+  }
 
   if (!["contact", "spec"].includes(type)) {
     return res.status(400).json({ error: "Invalid enquiry type." });

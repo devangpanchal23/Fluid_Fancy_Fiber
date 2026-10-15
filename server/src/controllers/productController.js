@@ -39,7 +39,8 @@ export async function listProducts(req, res, next) {
         .populate("category", "name slug")
         .sort(sort)
         .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Product.countDocuments(filter)
     ]);
 

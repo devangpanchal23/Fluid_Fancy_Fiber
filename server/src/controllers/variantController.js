@@ -15,13 +15,18 @@ async function assertProductExists(productId) {
 export async function listVariants(req, res, next) {
   try {
     const isAdmin = Boolean(req.admin);
-    const { product, page = 1, limit = 100, sort = "order" } = req.query;
-    if (!product && !isAdmin) {
+    const { product, products, page = 1, limit = 100, sort = "order" } = req.query;
+    const productIds = products ? String(products).split(",").filter(Boolean) : null;
+    if (!product && !productIds && !isAdmin) {
       return res.status(400).json({ success: false, message: "?product=<id> is required." });
+    }
+    if (productIds && (productIds.length > 50 || productIds.some((id) => !/^[a-f\d]{24}$/i.test(id)))) {
+      return res.status(400).json({ success: false, message: "The products filter is invalid." });
     }
 
     const filter = {};
     if (product) filter.product = product;
+    else if (productIds) filter.product = { $in: productIds };
     if (!isAdmin) filter.isActive = true;
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -31,7 +36,8 @@ export async function listVariants(req, res, next) {
       Variant.find(filter)
         .sort(sort)
         .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Variant.countDocuments(filter)
     ]);
 

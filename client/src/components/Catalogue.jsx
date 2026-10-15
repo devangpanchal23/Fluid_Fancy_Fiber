@@ -88,19 +88,17 @@ function useCatalogueLines(enabled) {
       if (!Array.isArray(items) || items.length === 0) return;
 
       const types = items.map(fromApiProduct);
-      await Promise.all(
-        types.map(async (type) => {
-          try {
-            const vRes = await fetch(`${API_URL}/variants?product=${type.id}&sort=order`);
-            if (!vRes.ok) return;
-            const vJson = await vRes.json();
-            const vItems = vJson?.data?.items;
-            if (Array.isArray(vItems)) type.variants = vItems.map(fromApiVariant);
-          } catch {
-            // Leave this type with zero variants rather than failing the whole catalogue.
-          }
-        })
-      );
+      const productIds = types.map((type) => type.id).join(",");
+      const variantResponse = await fetch(`${API_URL}/variants?products=${encodeURIComponent(productIds)}&sort=order&limit=200`);
+      if (variantResponse.ok) {
+        const variantJson = await variantResponse.json();
+        const variants = variantJson?.data?.items;
+        if (Array.isArray(variants)) {
+          const variantsByProduct = new Map(types.map((type) => [type.id, []]));
+          variants.forEach((variant) => variantsByProduct.get(String(variant.product))?.push(fromApiVariant(variant)));
+          types.forEach((type) => { type.variants = variantsByProduct.get(type.id) || []; });
+        }
+      }
 
       if (cancelled) return;
       setLines(types);

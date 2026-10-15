@@ -21,6 +21,7 @@ import ConeLibraryForm from "./pages/ConeLibraryForm";
 import EnquiryList from "./pages/EnquiryList";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import NotFound from "../components/NotFound";
 import "./admin.css";
 
 export default function AdminApp() {
@@ -58,6 +59,7 @@ export default function AdminApp() {
             <Route path="enquiries" element={<EnquiryList />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Profile />} />
+          <Route path="*" element={<NotFound admin />} />
           </Route>
         </Routes>
       </ToastProvider>

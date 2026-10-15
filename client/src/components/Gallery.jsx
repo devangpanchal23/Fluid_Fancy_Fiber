@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { images as bundledImages } from "../assets/images";
+import { DEFAULT_IMAGE } from "../utils/catalogueImage";
 import { getApiBase, resolveUploadUrl } from "../apiBase";
 import { useNearViewport } from "../hooks/useNearViewport";
 
@@ -7,6 +8,18 @@ const API_URL = getApiBase();
 
 function resolveImage(url) {
   return bundledImages[url] || resolveUploadUrl(url);
+}
+
+function GalleryImage({ src, alt, ...props }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <img
+      {...props}
+      src={resolveImage(failed ? DEFAULT_IMAGE : src)}
+      alt={alt}
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 // The Cone library is managed in the admin panel: this renders exactly what
@@ -119,7 +132,7 @@ function ConeLightbox({ items, index, onChange, onClose }) {
       )}
 
       <figure className="ff-lightbox-stage" onClick={(e) => e.stopPropagation()}>
-        <img key={item._id} src={resolveImage(item.image.url)} alt={item.image.alt || `${item.productName} yarn sample`} loading="lazy" decoding="async" />
+        <GalleryImage key={item._id} src={item.image.url} alt={item.image.alt || `${item.productName} yarn sample`} loading="lazy" decoding="async" />
         <figcaption className="ff-lightbox-caption">
           <span className="ff-lightbox-name">{item.productName}</span>
           <span className="ff-lightbox-details">{item.productDetails}</span>
@@ -186,7 +199,7 @@ export default function Gallery() {
                   onClick={() => setOpenIndex(i)}
                   aria-label={`View ${g.productName} full size`}
                 >
-                  <img src={resolveImage(g.image.url)} alt={g.image.alt || `${g.productName} yarn sample`} loading="lazy" decoding="async" />
+                  <GalleryImage src={g.image.url} alt={g.image.alt || `${g.productName} yarn sample`} loading="lazy" decoding="async" />
                   <span className="ff-gallery-view" aria-hidden="true">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                       <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />

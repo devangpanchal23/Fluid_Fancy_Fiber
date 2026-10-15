@@ -35,6 +35,20 @@ const allowedOrigins = new Set([
 
 export const app = express();
 
+function requestOrigin(req) {
+  const configuredSite = String(process.env.VITE_SITE_URL || "").trim();
+  try {
+    const parsed = new URL(configuredSite);
+    if (parsed.protocol === "https:") return parsed.origin;
+  } catch {
+    // Use the validated request host when the optional canonical URL is unset.
+  }
+  const host = String(req.get("host") || "").toLowerCase();
+  const safeHost = /^(?:[a-z0-9.-]+|\[[a-f\d:]+\])(?::\d{1,5})?$/.test(host) ? host : "localhost";
+  const protocol = process.env.NODE_ENV === "production" ? "https" : req.protocol;
+  return `${protocol}://${safeHost}`;
+}
+
 // Required behind Vercel's proxy (and any reverse proxy) so express-rate-limit
 // reads the real client IP from X-Forwarded-For instead of the proxy's IP.
 app.set("trust proxy", 1);
@@ -65,6 +79,36 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use("/api", (req, res, next) => {
+  const sendJson = res.json.bind(res);
+  res.json = (payload) => {
+    if (res.statusCode < 400) return sendJson(payload);
+    const codeByStatus = {
+      400: "INVALID_REQUEST",
+      401: "UNAUTHENTICATED",
+      403: "FORBIDDEN",
+      404: "NOT_FOUND",
+      409: "CONFLICT",
+      413: "PAYLOAD_TOO_LARGE",
+      429: "RATE_LIMITED",
+      503: "SERVICE_UNAVAILABLE"
+    };
+    const message = typeof payload?.message === "string"
+      ? payload.message
+      : typeof payload?.error === "string"
+        ? payload.error
+        : "The request could not be completed. Please try again.";
+    return sendJson({
+      ...(payload && typeof payload === "object" ? payload : {}),
+      success: false,
+      code: payload?.code || codeByStatus[res.statusCode] || "REQUEST_FAILED",
+      message,
+      error: payload?.error || message
+    });
+  };
+  next();
+});
+
 // credentials: true is required so the browser sends/receives the admin
 // session cookie across origins in local dev (client :5173, server :5001).
 app.use(
@@ -79,8 +123,7 @@ app.use(
       }
       if (
         allowedOrigins.has(origin) ||
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
-        configuredOrigins.includes(origin)
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
       ) {
         return callback(null, true);
       }
@@ -104,6 +147,21 @@ app.get("/uploads/:filename", serveImage);
 // server/src/utils/videoStorage.js) — same Vercel rewrite requirement as
 // /uploads/:filename above (see vercel.json).
 app.get("/video-uploads/:id", streamVideo);
+
+app.get(["/api/robots.txt", "/robots.txt"], (req, res) => {
+  res.type("text/plain").set("Cache-Control", "public, max-age=3600").send(
+    `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\nSitemap: ${requestOrigin(req)}/sitemap.xml\n`
+  );
+});
+
+app.get(["/api/sitemap.xml", "/sitemap.xml"], (req, res) => {
+  const origin = requestOrigin(req);
+  const urls = ["/", "/privacy", "/terms"];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls
+    .map((path) => `<url><loc>${origin}${path}</loc></url>`)
+    .join("")}</urlset>`;
+  res.type("application/xml").set("Cache-Control", "public, max-age=3600").send(xml);
+});
 
 app.get("/api/health", (req, res) => {
   const dbConnected = isDbConnected();

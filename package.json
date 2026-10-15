@@ -9,6 +9,8 @@
     "dev": "concurrently -k -n SERVER,CLIENT -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
+    "lint": "npm run lint --prefix client && npm run lint --prefix server",
+    "check:js": "find server/src api -name '*.js' -print0 | xargs -0 -n1 node --check",
     "build": "npm run build --prefix client",
     "start": "npm run start --prefix server"
   },

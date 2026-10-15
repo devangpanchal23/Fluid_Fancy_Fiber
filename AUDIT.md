@@ -81,6 +81,8 @@ The public experience is one page with in-page anchors, not separate routes. Unk
 
 ## Findings and planned fixes
 
+The table below records the root causes identified before implementation. Implementation status and verification are summarized in the close-out section at the end of this file.
+
 | Severity | Location | Root cause and symptom | Planned fix |
 |---|---|---|---|
 | High | `server/src/middleware/errorHandler.js:6-14` | Arbitrary exception messages are returned to clients, potentially exposing MongoDB, validation or infrastructure details. Error bodies vary across route handlers. | Use one stable public error shape and safe messages; keep diagnostic detail in server logs with request correlation. Preserve validation details only when intentionally safe. |
@@ -142,3 +144,7 @@ The public experience is one page with in-page anchors, not separate routes. Unk
 - No preview deployment URL or Vercel deployment access is available in the repository context. I will make the local app deploy-ready and run local smoke checks; remote preview behavior, Vercel environment completeness and deployed Lighthouse numbers require a preview URL and access.
 - MongoDB Atlas query plans and current production indexes cannot be inspected safely from this local checkout. No Atlas credentials/connection target will be changed, and no production writes or migrations will be run.
 - npm audit is available and has identified the dependency advisories above. Any remediation will use maintained compatible versions; no forced downgrade will be accepted.
+
+## Audit close-out
+
+The findings above drove the hardening work documented in [FINAL_REPORT.md](FINAL_REPORT.md). The code-side changes and local checks are complete. External checks remain open where they require Vercel/production access or a Lighthouse-capable browser: live domain redirects, Vercel environment values, Atlas explain plans, deployed route status, and mobile/desktop Lighthouse metrics. No production data, Atlas target, or credentials were changed. The dependency advisories listed under the baseline describe the pre-fix state; full dependency audits after dependency remediation reported zero vulnerabilities, while a final network-dependent audit refresh could not complete because npm registry DNS was unavailable.

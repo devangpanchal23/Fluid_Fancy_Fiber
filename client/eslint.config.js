@@ -7,7 +7,7 @@ const browserGlobals = Object.fromEntries(
     "AbortController", "Blob", "DOMException", "Event", "File", "FileReader", "FormData",
     "HTMLElement", "HTMLVideoElement", "Image", "IntersectionObserver", "MutationObserver",
     "ResizeObserver", "TextEncoder", "URL", "URLSearchParams", "XMLHttpRequest", "alert", "atob", "btoa",
-    "cancelAnimationFrame", "clearInterval", "clearTimeout", "confirm", "console", "document",
+    "cancelAnimationFrame", "clearInterval", "clearTimeout", "confirm", "console", "crypto", "document",
     "fetch", "getComputedStyle", "history", "localStorage", "location", "matchMedia", "navigator",
     "performance", "requestAnimationFrame", "sessionStorage", "setInterval", "setTimeout", "window"
   ].map((name) => [name, "readonly"])

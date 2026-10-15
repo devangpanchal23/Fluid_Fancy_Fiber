@@ -14,7 +14,8 @@
     "migrate:variants": "node src/scripts/migrateProductsToVariants.js",
     "migrate:media": "node src/scripts/migrateImagesToMedia.js",
     "backfill:media": "node src/scripts/backfillMediaData.js",
-    "test": "node --test src/__tests__/*.test.js"
+    "lint": "eslint .",
+    "test": "node --test --test-concurrency=1 src/__tests__/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -30,5 +31,10 @@
   },
   "overrides": {
     "qs": "^6.16.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0"
   }
 }

@@ -41,7 +41,7 @@ export async function requireAdmin(req, res, next) {
     }
     req.admin = admin;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ success: false, message: "Session expired. Please log in again." });
   }
 }

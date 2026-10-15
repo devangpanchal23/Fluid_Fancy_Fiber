@@ -88,7 +88,7 @@ export default function Contact() {
                 Enquiry logged
               </h3>
               <p style={{ margin: 0, maxWidth: "40ch", fontSize: 14.5, lineHeight: 1.7, color: "rgba(244,240,232,0.68)" }}>
-                Our technical desk replies within one working day, with a sample dispatched against your count.
+                The brochure is on its way to your email. Our technical desk replies within one working day with next steps for your quote.
               </p>
               <button type="button" className="ff-btn ff-btn-ghost ff-btn-ghost--dark" onClick={resetForm}>
                 Send another

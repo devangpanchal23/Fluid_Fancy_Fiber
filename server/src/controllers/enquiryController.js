@@ -1,5 +1,5 @@
 import Enquiry from "../models/Enquiry.js";
-import { sendEnquiryNotification } from "../utils/mailer.js";
+import { sendEnquiryNotification, sendSpecSheetEmail } from "../utils/mailer.js";
 
 const STATUSES = ["new", "in_progress", "contacted", "closed", "archived"];
 
@@ -9,6 +9,12 @@ const STATUSES = ["new", "in_progress", "contacted", "closed", "archived"];
 export async function createEnquiry(req, res, next) {
   try {
     const enquiry = await Enquiry.create(req.body);
+    try {
+      await sendSpecSheetEmail(enquiry);
+    } catch (mailErr) {
+      console.error("[mailer] Brochure delivery failed:", mailErr?.message || mailErr);
+      return res.status(503).json({ error: "We could not email the brochure right now. Please try again shortly." });
+    }
     res.status(201).json({
       message:
         enquiry.type === "spec"
@@ -16,9 +22,8 @@ export async function createEnquiry(req, res, next) {
           : "Enquiry logged. Our technical desk replies within one working day.",
       id: enquiry._id
     });
-    // Fire-and-forget: the submission already succeeded and was saved above;
-    // a slow or failed notification email must never affect the response
-    // already sent to the visitor or leave an unhandled rejection.
+    // Team notification is fire-and-forget. Customer brochure delivery above
+    // has already succeeded before we report success to the visitor.
     sendEnquiryNotification(enquiry).catch((mailErr) => {
       console.warn("[mailer] Background notification dispatch failed:", mailErr?.message || mailErr);
     });

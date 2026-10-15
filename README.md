@@ -264,9 +264,10 @@ Vercel serverless functions (this app's deployment target — see `vercel.json`)
 | `ADMIN_EMAIL`    | Optional admin login email. When set with `ADMIN_PASSWORD`, the server syncs the persistent admin account on startup | `admin@example.com` |
 | `ADMIN_PASSWORD` | Optional admin login password. Set together with `ADMIN_EMAIL`; quote it if it contains `#` or other special characters in `.env` | `"a-strong-password-#123"` |
 | `ADMIN_NAME`     | Optional display name for the seeded admin     | `Admin` |
-| `EMAIL_USER`     | Gmail address used to send contact-form/spec-sheet notifications (optional — see [Email Notifications](#email-notifications)) | `you@gmail.com` |
-| `EMAIL_PASS`     | A Gmail **App Password** for that account, not its regular password. Quote it — it contains spaces | `"abcd efgh ijkl mnop"` |
-| `NOTIFY_EMAIL`   | Who receives the notification. Defaults to `EMAIL_USER` if unset | `fluidfancyenterprisepvtltd@gmail.com` |
+| `BROCHURE_SENDER_EMAIL` | Gmail address used to send enquiry notifications and brochures (legacy `EMAIL_USER` is also supported) | `you@gmail.com` |
+| `BROCHURE_SENDER_APP_PASSWORD` | Gmail **App Password** for the sender account, not its regular password. Legacy `EMAIL_PASS` is also supported | `"your-app-password"` |
+| `NOTIFY_EMAIL`   | Who receives the notification. Defaults to `BROCHURE_SENDER_EMAIL` if unset | `fluidfancyenterprisepvtltd@gmail.com` |
+| `SPEC_SHEET_URL` | HTTPS link to the PDF sent to visitors who request a spec sheet | Provided brochure link |
 
 `.env` files are git-ignored; only `.env.example` files are committed. No real credentials are present in this repository. When both admin variables are set, the server syncs them into MongoDB on startup and once per Vercel function instance. Updating them in the deployment environment and redeploying updates the login credentials. If neither is set, the saved account remains unchanged. Setting only one is a configuration error.
 
@@ -376,18 +377,20 @@ The whole project deploys as a **single Vercel project**: the `client/` app buil
 
 ## Email Notifications
 
-When a visitor submits the contact form or requests a spec sheet, `server/src/controllers/enquiryController.js` still saves the submission to MongoDB first (unchanged), then fires off a notification email via Gmail SMTP (`server/src/utils/mailer.js`, using `nodemailer`) to `NOTIFY_EMAIL` — the email includes the submitter's name, company, email, message/product line, and a `reply-to` set to the submitter so you can reply directly from your inbox.
+When a visitor requests a spec sheet or submits the quote enquiry form, the request is saved to MongoDB and the brochure link is emailed to the address they entered. The team also receives an enquiry notification at `NOTIFY_EMAIL`. Set `SPEC_SHEET_URL` to change the brochure link without editing code.
 
-This is entirely best-effort and asynchronous: the visitor's response is sent immediately after the database save, and the email send happens after that — a slow or failed email never delays or breaks the form submission. If `EMAIL_USER`/`EMAIL_PASS` aren't configured, it just logs a warning and skips sending.
+The customer brochure email is required for a successful spec sheet response. If email settings are missing or the send fails, the API returns an error so the form does not claim it was sent. The submission remains saved in MongoDB. Team notifications remain best-effort and do not affect the visitor response.
 
-Setup: enable 2-Step Verification on the sending Gmail account, generate an **App Password** (Google Account → Security → App passwords — a 16-character code, not your login password), and set `EMAIL_USER`/`EMAIL_PASS`/`NOTIFY_EMAIL` (see [Environment Variables](#environment-variables)).
+The Drive PDF must be available to the recipients, for example with Google Drive's “Anyone with the link” viewer access. The application emails the link; it does not grant Drive permissions to individual addresses.
+
+Setup: enable 2-Step Verification on the sending Gmail account, generate an **App Password** (Google Account → Security → App passwords — a 16-character code, not your login password), and set `BROCHURE_SENDER_EMAIL`/`BROCHURE_SENDER_APP_PASSWORD`/`NOTIFY_EMAIL`/`SPEC_SHEET_URL` in the deployment environment (see [Environment Variables](#environment-variables)).
 
 ## Known Issues
 
 - **The production database is not yet wired up.** No `MONGODB_URI`/`JWT_SECRET` have been configured in the Vercel project, so on the live deployment `/api/health` works but every database-backed route (enquiries, products, categories, admin login) returns `503`. See [Deployment](#deployment) for the exact steps to finish this.
 - `PUT/DELETE /api/products/:id`, `/api/categories/:id`, `/api/enquiries/:id` etc. all require the admin session cookie now — this was previously unauthenticated for enquiries and did not exist at all for products/categories.
 - The `Variant.images`/`Category.image`/`Person.image` fields store `{ url, alt }` pairs (a URL, or one of the bundled asset keys `hero`/`mill`/`logo` for content migrated from the original static site) rather than binary data — see [Image Uploads](#image-uploads) for how uploads work and their production caveat.
-- Email notifications (see [Email Notifications](#email-notifications)) are best-effort: if `EMAIL_USER`/`EMAIL_PASS` aren't set, or Gmail's SMTP rejects the send, the submission still saves to MongoDB and the visitor still gets a success response — only the notification email is skipped, with a warning logged server-side.
+- Team email notifications are best-effort. Spec sheet requests return an error if the customer brochure email cannot be sent; the request itself remains saved.
 - No ESLint v9 flat config (`eslint.config.js`) exists yet in `client/`, so `npm run lint` cannot currently run.
 - A dependency-tree `qs` package (a transitive dependency of Express itself, not something this project imports directly) has a known moderate-severity advisory; `npm audit fix` doesn't resolve it without an Express major-version bump, which was judged out of scope here.
 

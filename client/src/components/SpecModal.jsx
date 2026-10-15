@@ -65,8 +65,7 @@ export default function SpecModal({ isOpen, title, lineName, onClose }) {
         <div className="ff-kicker">Technical desk</div>
         <h3>{title}</h3>
         <p className="ff-modal-lede">
-          Leave a work email and we&apos;ll send the full specification sheet, including count range, twist
-          tolerance and packing detail.
+          Leave a work email and we&apos;ll send our PDF brochure and full specification details.
         </p>
 
         {sent ? (

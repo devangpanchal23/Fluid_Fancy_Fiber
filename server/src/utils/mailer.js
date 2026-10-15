@@ -1,11 +1,17 @@
 import nodemailer from "nodemailer";
 
 let transporter = null;
+const DEFAULT_SPEC_SHEET_URL = "https://drive.google.com/file/d/1DZA2vWxAtDk6MavmxLi2nW2MRVPLQeBs/view?usp=sharing";
+
+function getSenderEmail() {
+  return String(process.env.BROCHURE_SENDER_EMAIL || process.env.EMAIL_USER || "").trim();
+}
 
 function getTransporter() {
   if (transporter) return transporter;
-  const user = process.env.EMAIL_USER ? String(process.env.EMAIL_USER).trim() : "";
-  const pass = process.env.EMAIL_PASS ? String(process.env.EMAIL_PASS).replace(/["'\s]/g, "") : "";
+  const user = getSenderEmail();
+  const rawPass = process.env.BROCHURE_SENDER_APP_PASSWORD || process.env.EMAIL_PASS;
+  const pass = rawPass ? String(rawPass).replace(/["'\s]/g, "") : "";
   if (!user || !pass) return null;
 
   try {
@@ -34,11 +40,11 @@ export async function sendEnquiryNotification(enquiry) {
     if (!enquiry) return;
     const t = getTransporter();
     if (!t) {
-      console.warn("[mailer] EMAIL_USER/EMAIL_PASS not configured — skipping notification email.");
+      console.warn("[mailer] BROCHURE_SENDER_EMAIL/BROCHURE_SENDER_APP_PASSWORD not configured — skipping notification email.");
       return;
     }
 
-    const to = process.env.NOTIFY_EMAIL || process.env.EMAIL_USER;
+    const to = process.env.NOTIFY_EMAIL || getSenderEmail();
     const isSpec = enquiry.type === "spec";
     const subject = isSpec
       ? `Spec sheet request — ${enquiry.lineName || "General"}`
@@ -71,7 +77,7 @@ export async function sendEnquiryNotification(enquiry) {
     `;
 
     await t.sendMail({
-      from: `"Fluid Fancy Fibre — Website" <${process.env.EMAIL_USER}>`,
+      from: `"Fluid Fancy Fibre — Website" <${getSenderEmail()}>`,
       to,
       replyTo: enquiry.email,
       subject,
@@ -80,5 +86,38 @@ export async function sendEnquiryNotification(enquiry) {
   } catch (err) {
     console.error("[mailer] Failed to send enquiry notification:", err?.message || err);
   }
+}
+
+// Send the brochure to the visitor. Unlike the internal notification, this is
+// part of the requested customer flow, so delivery failures reach the caller.
+export async function sendSpecSheetEmail(enquiry) {
+  const t = getTransporter();
+  if (!t) throw new Error("Email delivery is not configured.");
+
+  const url = String(process.env.SPEC_SHEET_URL || DEFAULT_SPEC_SHEET_URL).trim();
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error("SPEC_SHEET_URL must be a valid URL.");
+  }
+  if (parsedUrl.protocol !== "https:") throw new Error("SPEC_SHEET_URL must use HTTPS.");
+
+  const lineName = enquiry.lineName || "our product range";
+  await t.sendMail({
+    from: `"Fluid Fancy Fibre" <${getSenderEmail()}>`,
+    to: enquiry.email,
+    subject: "Your Fluid Fancy Fibre specification brochure",
+    text: `Thank you for your interest in ${lineName}. View the PDF brochure here: ${url}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#17140f;max-width:560px">
+        <h2 style="font-size:22px">Your specification brochure</h2>
+        <p>Thank you for your interest in ${escapeHtml(lineName)}.</p>
+        <p><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 18px;background:#17140f;color:#f4f0e8;text-decoration:none">View the PDF brochure</a></p>
+        <p>If the button does not work, copy this link into your browser:<br><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>
+        <p>Reply to this email if you would like a quotation or have a question.</p>
+      </div>
+    `
+  });
 }
 

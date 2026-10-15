@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 
 export function useActiveSection(ids, initial = ids[0]) {
   const [active, setActive] = useState(initial);
+  const idsKey = ids.join(",");
 
   useEffect(() => {
-    const sections = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    const sections = idsKey.split(",").map((id) => document.getElementById(id)).filter(Boolean);
     if (!sections.length) return undefined;
 
     const io = new IntersectionObserver(
@@ -17,8 +18,7 @@ export function useActiveSection(ids, initial = ids[0]) {
     );
     sections.forEach((s) => io.observe(s));
     return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids.join(",")]);
+  }, [idsKey]);
 
   return active;
 }

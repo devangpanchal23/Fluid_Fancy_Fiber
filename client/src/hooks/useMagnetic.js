@@ -2,10 +2,10 @@ import { useEffect } from "react";
 
 // Applies a damped pointer-follow translate to [data-magnetic] elements,
 // skipped for touch pointers and reduced-motion users.
-export function useMagnetic(containerRef, deps = []) {
+export function useMagnetic(containerRef) {
+  const root = containerRef?.current || document;
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
-    const root = containerRef?.current || document;
     const magnets = Array.from(root.querySelectorAll("[data-magnetic]"));
 
     const cleanups = magnets.map((el) => {
@@ -30,6 +30,5 @@ export function useMagnetic(containerRef, deps = []) {
     });
 
     return () => cleanups.forEach((fn) => fn());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [root]);
 }

@@ -138,7 +138,6 @@ export async function uploadVideoLocally(file, onProgress) {
       const end = Math.min(start + chunkSize, file.size);
       const blob = file.slice(start, end);
       const isLast = index === totalChunks - 1;
-      // eslint-disable-next-line no-await-in-loop -- chunks must land in order; the server keys each on this same index.
       await putChunk(uploadId, index, blob, isLast, (loaded) => {
         chunkLoaded[index] = loaded;
         reportProgress();

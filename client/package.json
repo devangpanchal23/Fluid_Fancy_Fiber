@@ -17,8 +17,11 @@
     "react-router-dom": "^7.18.3"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9.14.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "vite": "^8.3.0"
   },
   "allowScripts": {

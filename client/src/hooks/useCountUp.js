@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 // Eases 0 -> each target once the ref's element becomes visible.
 export function useCountUp(targets, { duration = 1000 } = {}) {
+  const targetKey = targets.join(",");
   const [counts, setCounts] = useState(targets.map(() => 0));
   const ref = useRef(null);
   const started = useRef(false);
@@ -18,7 +19,7 @@ export function useCountUp(targets, { duration = 1000 } = {}) {
       const tick = (t) => {
         const k = Math.min(1, (t - start) / duration);
         const eased = 1 - (1 - k) ** 3;
-        setCounts(targets.map((v) => Math.round(v * eased)));
+        setCounts(targetKey.split(",").map(Number).map((v) => Math.round(v * eased)));
         if (k < 1) rafRef.current = requestAnimationFrame(tick);
       };
       rafRef.current = requestAnimationFrame(tick);
@@ -41,8 +42,7 @@ export function useCountUp(targets, { duration = 1000 } = {}) {
       io.disconnect();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targets.join(","), duration]);
+  }, [targetKey, duration]);
 
   return [ref, counts];
 }

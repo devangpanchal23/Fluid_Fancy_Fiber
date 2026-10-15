@@ -16,13 +16,6 @@ function validateFile(file) {
   return null;
 }
 
-function formatSize(bytes) {
-  if (!bytes && bytes !== 0) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 // Reusable "choose from library" modal. Admin can search/browse, select one
 // or several images (selection order becomes gallery order — see
 // mediaSelection.js), upload new files without leaving the flow, and
@@ -65,8 +58,7 @@ export default function MediaPicker({ open, multiple = true, onClose, onConfirm 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, q, page]);
+  }, [open, q, page, toast]);
 
   useEffect(() => {
     if (!open) return undefined;

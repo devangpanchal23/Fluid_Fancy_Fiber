@@ -25,8 +25,8 @@ export default function App() {
   const [modal, setModal] = useState({ open: false, title: "", lineName: "" });
   const { scroll, shrink, showTop } = useScrollProgress({ shrinkAt: 90, topAt: 0.07 });
 
-  useReveal({ current: document }, []);
-  useMagnetic({ current: document }, []);
+  useReveal({ current: document });
+  useMagnetic({ current: document });
 
   const openModal = useCallback((title, lineName = "") => {
     setModal({ open: true, title, lineName });

@@ -51,8 +51,7 @@ export default function VariantForm() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isEdit]);
+  }, [id, isEdit, toast]);
 
   useEffect(() => {
     function onBeforeUnload(e) {

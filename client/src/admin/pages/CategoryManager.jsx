@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -21,16 +21,16 @@ export default function CategoryManager() {
   const [editName, setEditName] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
 
-  function load() {
+  const load = useCallback(() => {
     setLoading(true);
     api
       .get("/categories")
       .then((d) => setCategories(d.categories))
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
-  }
+  }, [toast]);
 
-  useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [load]);
 
   async function onCreate(e) {
     e.preventDefault();

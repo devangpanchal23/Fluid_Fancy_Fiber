@@ -46,7 +46,7 @@ export default function PersonList() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [q]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [q]);
 
   async function toggleActive(person) {
     try {

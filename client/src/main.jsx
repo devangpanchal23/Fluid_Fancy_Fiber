@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import App from "./App.jsx";
+import NotFound from "./components/NotFound.jsx";
+import GlobalErrorBoundary from "./components/GlobalErrorBoundary.jsx";
 import "./index.css";
 
 const AdminApp = lazy(() => import("./admin/AdminApp.jsx"));
@@ -28,17 +30,20 @@ function AdminFallback() {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route
-          path="/admin/*"
-          element={
-            <Suspense fallback={<AdminFallback />}>
-              <AdminApp />
-            </Suspense>
-          }
-        />
-      </Routes>
+      <GlobalErrorBoundary>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route
+            path="/admin/*"
+            element={
+              <Suspense fallback={<AdminFallback />}>
+                <AdminApp />
+              </Suspense>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </GlobalErrorBoundary>
       <Analytics />
     </BrowserRouter>
   </React.StrictMode>

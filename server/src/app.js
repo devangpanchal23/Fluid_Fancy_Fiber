@@ -82,8 +82,10 @@ app.get("/video-uploads/:id", streamVideo);
 
 app.get("/api/health", (req, res) => {
   const dbConnected = isDbConnected();
-  res.json({
-    ok: true,
+  res.status(dbConnected ? 200 : 503).json({
+    success: dbConnected,
+    code: dbConnected ? "OK" : "DATABASE_UNAVAILABLE",
+    ok: dbConnected,
     service: "fluid-fibers-api",
     database: dbConnected ? "connected" : "disconnected"
   });
@@ -97,12 +99,8 @@ app.use("/api", async (req, res, next) => {
   try {
     await connectDB();
     next();
-  } catch {
-    return res.status(503).json({
-      success: false,
-      error: "Database temporarily unavailable. Please retry in a moment.",
-      message: "Database temporarily unavailable. Please retry in a moment."
-    });
+  } catch (err) {
+    return next(Object.assign(new Error("Database unavailable"), { status: 503, cause: err }));
   }
 });
 

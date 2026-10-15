@@ -39,6 +39,32 @@ export const app = express();
 // reads the real client IP from X-Forwarded-For instead of the proxy's IP.
 app.set("trust proxy", 1);
 
+app.use((req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "script-src 'self' https://va.vercel-scripts.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com",
+      "frame-src https://drive.google.com https://www.google.com"
+    ].join("; ")
+  });
+  if (process.env.NODE_ENV === "production") {
+    res.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  }
+  next();
+});
+
 // credentials: true is required so the browser sends/receives the admin
 // session cookie across origins in local dev (client :5173, server :5001).
 app.use(
@@ -46,16 +72,15 @@ app.use(
     origin: (origin, callback) => {
       // allow requests with no origin (like mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
-      let hostname = "";
       try {
-        hostname = new URL(origin).hostname;
-      } catch {}
+        new URL(origin);
+      } catch {
+        return callback(null, false);
+      }
       if (
         allowedOrigins.has(origin) ||
         /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
-        hostname.endsWith(".vercel.app") ||
-        hostname === "fluidfancyenterprise.com" ||
-        hostname.endsWith(".fluidfancyenterprise.com")
+        configuredOrigins.includes(origin)
       ) {
         return callback(null, true);
       }
@@ -95,6 +120,11 @@ app.get("/api/health", (req, res) => {
 // if still unavailable, return 503 instead of crashing or hanging the request.
 app.use("/api", async (req, res, next) => {
   if (req.path === "/health") return next();
+  const knownApiPath = [
+    "/enquiries", "/admin", "/products", "/categories", "/people", "/uploads",
+    "/media", "/variants", "/videos", "/video-assets", "/cone-library"
+  ].some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`));
+  if (!knownApiPath) return next();
   if (isDbConnected()) return next();
   try {
     await connectDB();

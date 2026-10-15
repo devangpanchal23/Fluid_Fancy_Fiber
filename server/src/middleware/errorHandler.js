@@ -22,7 +22,7 @@ export function errorHandler(err, req, res, next) {
   } else if (err.name === "MulterError") {
     status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
     code = status === 413 ? "FILE_TOO_LARGE" : "INVALID_UPLOAD";
-    message = status === 413 ? "The uploaded file is too large." : "The uploaded file could not be accepted.";
+    message = status === 413 ? "The uploaded file is too large." : err.message || "The uploaded file could not be accepted.";
   } else if (status === 429) {
     code = "RATE_LIMITED";
     message = "Too many requests. Please try again later.";
@@ -37,7 +37,9 @@ export function errorHandler(err, req, res, next) {
     message = "This service is temporarily unavailable. Please try again shortly.";
   } else if (status >= 400 && status < 500) {
     code = "INVALID_REQUEST";
-    message = "The request could not be completed. Please check your information and try again.";
+    message = status === 400 && typeof err.message === "string"
+      ? err.message
+      : "The request could not be completed. Please check your information and try again.";
   } else {
     status = 500;
   }

@@ -6,7 +6,7 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
+    "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
     "seed:cone-library": "node src/scripts/seedConeLibrary.js",
@@ -28,7 +28,7 @@
     "multer": "^2.3.0",
     "nodemailer": "^10.0.9"
   },
-  "devDependencies": {
-    "nodemon": "^3.1.7"
+  "overrides": {
+    "qs": "^6.16.0"
   }
 }

@@ -9,11 +9,13 @@ const STATUSES = ["new", "in_progress", "contacted", "closed", "archived"];
 export async function createEnquiry(req, res, next) {
   try {
     const enquiry = await Enquiry.create(req.body);
-    try {
-      await sendSpecSheetEmail(enquiry);
-    } catch (mailErr) {
-      console.error("[mailer] Brochure delivery failed:", mailErr?.message || mailErr);
-      return res.status(503).json({ error: "We could not email the brochure right now. Please try again shortly." });
+    if (enquiry.type === "spec") {
+      try {
+        await sendSpecSheetEmail(enquiry);
+      } catch (mailErr) {
+        console.error("[mailer] Brochure delivery failed:", mailErr?.message || mailErr);
+        return res.status(503).json({ error: "We could not email the brochure right now. Please try again shortly." });
+      }
     }
     res.status(201).json({
       message:

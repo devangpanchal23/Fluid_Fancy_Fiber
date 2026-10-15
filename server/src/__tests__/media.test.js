@@ -59,7 +59,7 @@ test("Media Library API", { skip: !dbAvailable && "No local MongoDB reachable" }
     return { status: res.status, data };
   }
 
-  async function uploadMediaFile(filename, { type = "image/png", bytes = "test image bytes" } = {}) {
+  async function uploadMediaFile(filename, { type = "image/png", bytes = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("test image bytes")]) } = {}) {
     const form = new FormData();
     form.append("image", new Blob([bytes], { type }), filename);
     const res = await fetch(`${base}/api/media`, {
@@ -84,6 +84,12 @@ test("Media Library API", { skip: !dbAvailable && "No local MongoDB reachable" }
     const r = await uploadMediaFile("test-media-bad.txt", { type: "text/plain" });
     assert.equal(r.status, 400);
     assert.match(r.data.message, /Unsupported file type/i);
+  });
+
+  await t.test("rejects a PNG MIME type when the bytes are not a PNG", async () => {
+    const r = await uploadMediaFile("test-media-fake.png", { bytes: Buffer.from("not an image") });
+    assert.equal(r.status, 400);
+    assert.match(r.data.message, /does not match/i);
   });
 
   let mediaAId, mediaBId, mediaAUrl, mediaBUrl;

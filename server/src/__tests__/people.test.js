@@ -57,9 +57,11 @@ test("People: admin changes are mirrored exactly on the public list", { skip: !d
   const publicList = async () => (await req("/api/people?activeOnly=true&limit=100", { anon: true })).data.data.items.filter((p) => /^TP /.test(p.name));
   const adminList = async () => (await req("/api/people?limit=100")).data.data.items.filter((p) => /^TP /.test(p.name));
 
+  const pngBytes = (value) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from(value)]);
+
   async function uploadPhoto(name, bytes) {
     const form = new FormData();
-    form.append("image", new Blob([bytes], { type: "image/png" }), name);
+    form.append("image", new Blob([pngBytes(bytes)], { type: "image/png" }), name);
     const res = await fetch(`${base}/api/uploads`, { method: "POST", headers: { Cookie: cookie }, body: form });
     const { url } = (await res.json()).data;
     return { url, alt: "" };
@@ -69,7 +71,7 @@ test("People: admin changes are mirrored exactly on the public list", { skip: !d
     const res = await fetch(`${base}${person.image.url}`);
     assert.equal(res.status, 200, `photo for ${person.name} must load`);
     assert.match(res.headers.get("content-type"), /^image\//);
-    if (expectedBytes) assert.ok(Buffer.from(await res.arrayBuffer()).equals(Buffer.from(expectedBytes)));
+    if (expectedBytes) assert.ok(Buffer.from(await res.arrayBuffer()).equals(pngBytes(expectedBytes)));
   }
 
   await req("/api/admin/login", { method: "POST", body: { email: "test-people-admin@example.com", password: "SuperSecret123!" } });
@@ -218,7 +220,7 @@ test("People: admin changes are mirrored exactly on the public list", { skip: !d
 
   await t.test("a photo picked from the Media Library works, stays linked, and protects the library item from deletion", async () => {
     const form = new FormData();
-    form.append("image", new Blob(["library-bytes"], { type: "image/png" }), "test-people-library.png");
+    form.append("image", new Blob([pngBytes("library-bytes")], { type: "image/png" }), "test-people-library.png");
     const uploaded = await (await fetch(`${base}/api/media`, { method: "POST", headers: { Cookie: cookie }, body: form })).json();
     const media = uploaded.data.media;
 

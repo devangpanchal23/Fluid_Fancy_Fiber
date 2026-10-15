@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { submitSpecRequest } from "../api/enquiries";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -8,6 +8,11 @@ export default function SpecModal({ isOpen, title, lineName, onClose }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [website, setWebsite] = useState("");
+  const dialogRef = useRef(null);
+  const closeRef = useRef(null);
+  const emailRef = useRef(null);
+  const requestKeyRef = useRef("");
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -15,12 +20,33 @@ export default function SpecModal({ isOpen, title, lineName, onClose }) {
     setError("");
     setBusy(false);
     setSent(false);
+    setWebsite("");
+    requestKeyRef.current = "";
+    const previousFocus = document.activeElement;
+    const focusFrame = requestAnimationFrame(() => (emailRef.current || closeRef.current)?.focus());
 
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
+      if (e.key === "Tab") {
+        const focusable = Array.from(dialogRef.current?.querySelectorAll("button:not([disabled]), input:not([disabled]), a[href]") || []);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", onKey);
+      previousFocus?.focus?.();
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -34,8 +60,10 @@ export default function SpecModal({ isOpen, title, lineName, onClose }) {
     setError("");
     setBusy(true);
     try {
-      await submitSpecRequest({ email: email.trim(), lineName });
+      requestKeyRef.current ||= crypto.randomUUID();
+      await submitSpecRequest({ email: email.trim(), lineName, website }, requestKeyRef.current);
       setSent(true);
+      requestKeyRef.current = "";
     } catch (err) {
       setError(err.message);
     } finally {
@@ -51,12 +79,12 @@ export default function SpecModal({ isOpen, title, lineName, onClose }) {
       className="ff-modal-backdrop"
       onClick={onClose}
     >
-      <div className="ff-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="ff-modal" onClick={(e) => e.stopPropagation()}>
         <i className="corner tl" />
         <i className="corner tr" />
         <i className="corner bl" />
         <i className="corner br" />
-        <button type="button" aria-label="Close" className="ff-modal-close" onClick={onClose}>
+        <button ref={closeRef} type="button" aria-label="Close" className="ff-modal-close" onClick={onClose}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#17140f" strokeWidth="1.5" strokeLinecap="round">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
@@ -73,10 +101,18 @@ export default function SpecModal({ isOpen, title, lineName, onClose }) {
           </div>
         ) : (
           <form className="ff-modal-form" onSubmit={onSubmit} noValidate>
+            <label className="ff-honeypot" aria-hidden="true">
+              Website
+              <input type="text" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+            </label>
             <input
+              ref={emailRef}
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                requestKeyRef.current = "";
+                setEmail(e.target.value);
+              }}
               placeholder="Enter your email here"
               className={error ? "has-error" : ""}
             />

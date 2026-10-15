@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CONTACTS } from "../data/content";
 import { submitEnquiry } from "../api/enquiries";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-const initialForm = { name: "", company: "", email: "", message: "" };
+const initialForm = { name: "", company: "", email: "", message: "", website: "" };
 
 export default function Contact() {
   const [form, setForm] = useState(initialForm);
@@ -12,10 +12,14 @@ export default function Contact() {
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [serverError, setServerError] = useState("");
+  const requestKeyRef = useRef("");
 
   const field = (key) => ({
     value: form[key],
-    onChange: (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+    onChange: (e) => {
+      requestKeyRef.current = "";
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+    }
   });
 
   async function onSubmit(e) {
@@ -29,8 +33,10 @@ export default function Contact() {
 
     setServerError("");
     setSubmitting(true);
+    requestKeyRef.current ||= crypto.randomUUID();
     try {
-      await submitEnquiry(form);
+      await submitEnquiry(form, requestKeyRef.current);
+      requestKeyRef.current = "";
       setSent(true);
     } catch (err) {
       setServerError(err.message);
@@ -43,6 +49,7 @@ export default function Contact() {
     setForm(initialForm);
     setErrors({});
     setSent(false);
+    requestKeyRef.current = "";
   }
 
   return (
@@ -88,7 +95,7 @@ export default function Contact() {
                 Enquiry logged
               </h3>
               <p style={{ margin: 0, maxWidth: "40ch", fontSize: 14.5, lineHeight: 1.7, color: "rgba(244,240,232,0.68)" }}>
-                The brochure is on its way to your email. Our technical desk replies within one working day with next steps for your quote.
+                Our technical desk has received your enquiry and will reply within one working day with next steps for your quote.
               </p>
               <button type="button" className="ff-btn ff-btn-ghost ff-btn-ghost--dark" onClick={resetForm}>
                 Send another
@@ -115,6 +122,10 @@ export default function Contact() {
                 <span className="ff-field-label">Requirement</span>
                 <textarea rows="4" placeholder="Counts, volume, shades, delivery window" {...field("message")} />
               </label>
+              <label className="ff-honeypot" aria-hidden="true">
+                Website
+                <input type="text" tabIndex={-1} autoComplete="off" {...field("website")} />
+              </label>
 
               {serverError && <div className="ff-form-error-banner">{serverError}</div>}
 
@@ -123,6 +134,7 @@ export default function Contact() {
                 <span>{submitting ? "Sending" : "Send enquiry"}</span>
               </button>
               <p className="ff-form-note">We reply from a named technician, never a sales queue.</p>
+              <p className="ff-form-note">By sending this form, you agree to our <a href="/privacy" style={{ color: "var(--ff-accent-dark)", textDecoration: "underline" }}>privacy notice</a>.</p>
             </form>
           )}
         </div>

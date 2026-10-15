@@ -36,6 +36,10 @@ test(
 
     const rawProducts = mongoose.connection.db.collection("products");
 
+    await Promise.all([
+      Product.deleteMany({ slug: /^test-migrate-/ }),
+      Variant.deleteMany({ sku: /^OLD-SKU-/ })
+    ]);
     await Category.deleteMany({ slug: "test-migration-category" });
     const category = await Category.create({ name: "Test Migration Category", slug: "test-migration-category" });
 

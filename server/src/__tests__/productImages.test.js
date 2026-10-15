@@ -60,17 +60,20 @@ test("a product image, once attached, is publicly fetchable and byte-identical t
 
   await req("/api/admin/login", { method: "POST", body: { email: "test-prodimg-admin@example.com", password: "SuperSecret123!" } });
 
-  const imageBytes = Buffer.from("this-is-not-a-real-jpeg-but-stands-in-for-one");
+  const imageBytes = Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    Buffer.from("test image bytes")
+  ]);
 
   let mediaUrl;
   await t.test("uploading an image to the Media Library persists its bytes", async () => {
     const form = new FormData();
-    form.append("image", new Blob([imageBytes], { type: "image/jpeg" }), "test-prodimg-hero.jpg");
+    form.append("image", new Blob([imageBytes], { type: "image/png" }), "test-prodimg-hero.png");
     const res = await fetch(`${base}/api/media`, { method: "POST", headers: cookie ? { Cookie: cookie } : undefined, body: form });
     const data = await res.json();
     assert.equal(res.status, 201);
     mediaUrl = data.data.media.url;
-    assert.match(mediaUrl, /^\/uploads\/.+\.jpg$/);
+    assert.match(mediaUrl, /^\/uploads\/.+\.png$/);
   });
 
   let productId;
@@ -95,7 +98,7 @@ test("a product image, once attached, is publicly fetchable and byte-identical t
     // an anonymous visitor's <img> tag on the live site does.
     const imgRes = await fetch(`${base}${publicImageUrl}`);
     assert.equal(imgRes.status, 200, "product image must load without any admin session");
-    assert.equal(imgRes.headers.get("content-type"), "image/jpeg");
+    assert.equal(imgRes.headers.get("content-type"), "image/png");
 
     const receivedBytes = Buffer.from(await imgRes.arrayBuffer());
     assert.deepEqual(receivedBytes, imageBytes, "bytes served back must match what was uploaded");

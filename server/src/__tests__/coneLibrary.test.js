@@ -57,9 +57,11 @@ test("Cone library: admin CRUD is mirrored exactly on the public list", { skip: 
   const adminList = async () => mine((await req("/api/cone-library")).data.data.items);
 
   // Uploads through the same endpoint the Media Library uses; returns the image ref a form would send.
+  const pngBytes = (value) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from(value)]);
+
   async function uploadImage(name, bytes) {
     const form = new FormData();
-    form.append("image", new Blob([bytes], { type: "image/png" }), name);
+    form.append("image", new Blob([pngBytes(bytes)], { type: "image/png" }), name);
     const res = await fetch(`${base}/api/media`, { method: "POST", headers: { Cookie: cookie }, body: form });
     const { media } = (await res.json()).data;
     return { url: media.url, alt: "", filename: media.filename, media: media._id };

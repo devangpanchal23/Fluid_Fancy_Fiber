@@ -5,6 +5,7 @@ import App from "./App.jsx";
 import NotFound from "./components/NotFound.jsx";
 import GlobalErrorBoundary from "./components/GlobalErrorBoundary.jsx";
 import PageMetadata from "./components/PageMetadata.jsx";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import "./index.css";
 
 const AdminApp = lazy(() => import("./admin/AdminApp.jsx"));
@@ -55,6 +56,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Analytics />
         </Suspense>
       )}
+      <SpeedInsights />
     </BrowserRouter>
   </React.StrictMode>
 );

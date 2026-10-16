@@ -16,6 +16,7 @@ import BackToTop from "./components/BackToTop";
 import { useScrollProgress } from "./hooks/useScrollProgress";
 import { useReveal } from "./hooks/useReveal";
 import { useMagnetic } from "./hooks/useMagnetic";
+import Preloader from "./components/Preloader.jsx";
 
 const Catalogue = lazy(() => import("./components/Catalogue.jsx"));
 const Gallery = lazy(() => import("./components/Gallery.jsx"));
@@ -25,6 +26,7 @@ const SpecModal = lazy(() => import("./components/SpecModal.jsx"));
 
 export default function App() {
   const [modal, setModal] = useState({ open: false, title: "", lineName: "" });
+  const [preloaderDone, setPreloaderDone] = useState(false);
   const { scroll, shrink, showTop } = useScrollProgress({ shrinkAt: 90, topAt: 0.07 });
 
   useReveal({ current: document });
@@ -37,6 +39,7 @@ export default function App() {
 
   return (
     <div className="ff-app">
+      {!preloaderDone && <Preloader onDone={() => setPreloaderDone(true)} />}
       <div className="ff-progress" style={{ transform: `scaleX(${scroll.toFixed(4)})` }} />
 
       <Header shrink={shrink} onOpenModal={openModal} />

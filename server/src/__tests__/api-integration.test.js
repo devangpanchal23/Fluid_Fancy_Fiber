@@ -44,7 +44,7 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     Product.deleteMany({ slug: /^test-/ }),
     Variant.deleteMany({ sku: /^TEST-/ }),
     Video.deleteMany({ title: /^Test Video/ }),
-    Enquiry.deleteMany({ email: /^test-enquiry@/ }),
+    Enquiry.deleteMany({ email: /^test-enquiry/ }),
     Person.deleteMany({ name: /^Test Person/ })
   ]);
 
@@ -323,6 +323,68 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     assert.equal(await Enquiry.countDocuments({ email: "bot@example.com" }), 0);
   });
 
+  await t.test("spec sheet enquiry delivers brochure email with google drive link, handles failure and safe retry", async () => {
+    const { setTransporterForTesting, resetTransporterForTesting } = await import("../utils/mailer.js");
+    const sentMails = [];
+    let shouldFail = false;
+    setTransporterForTesting({
+      sendMail: async (opts) => {
+        if (shouldFail) throw new Error("Simulated mailer outage");
+        sentMails.push(opts);
+        return { messageId: "test-msg-id" };
+      }
+    });
+
+    const savedCookie = cookie;
+    cookie = "";
+    try {
+      const specBody = { type: "spec", email: "test-enquiry-spec@example.com", lineName: "Cotton Luxe" };
+      const headers = { "Idempotency-Key": "d3b07384-d113-4f9e-bc4d-176313411111" };
+
+      // Successful delivery
+      const r = await req("/api/enquiries", { method: "POST", body: specBody, headers });
+      assert.equal(r.status, 201);
+      assert.match(r.data.message, /Sent/);
+
+      // Verify email was sent to customer with Google Drive link
+      assert.equal(sentMails.length, 1);
+      assert.equal(sentMails[0].to, "test-enquiry-spec@example.com");
+      assert.match(sentMails[0].html, /drive\.google\.com/);
+      assert.match(sentMails[0].subject, /specification brochure/i);
+
+      // Verify database record has brochureDeliveryStatus = "sent"
+      const record = await Enquiry.findById(r.data.id);
+      assert.equal(record.brochureDeliveryStatus, "sent");
+
+      // Idempotent retry: should succeed with 201 but NOT send another email
+      const retry = await req("/api/enquiries", { method: "POST", body: specBody, headers });
+      assert.equal(retry.status, 201);
+      assert.equal(sentMails.length, 1);
+
+      // Transient failure & retry test:
+      shouldFail = true;
+      const failHeaders = { "Idempotency-Key": "d3b07384-d113-4f9e-bc4d-176313422222" };
+      const failBody = { type: "spec", email: "test-enquiry-fail@example.com", lineName: "Silk Blend" };
+      const failRes = await req("/api/enquiries", { method: "POST", body: failBody, headers: failHeaders });
+      assert.equal(failRes.status, 503);
+      assert.equal(failRes.data.code, "EMAIL_DELIVERY_FAILED");
+
+      const failRecord = await Enquiry.findOne({ email: failBody.email });
+      assert.ok(failRecord);
+      assert.equal(failRecord.brochureDeliveryStatus, "failed");
+
+      // Now recover mailer and retry with same idempotency key
+      shouldFail = false;
+      const recoveredRes = await req("/api/enquiries", { method: "POST", body: failBody, headers: failHeaders });
+      assert.equal(recoveredRes.status, 201);
+      const recoveredRecord = await Enquiry.findOne({ email: failBody.email });
+      assert.equal(recoveredRecord.brochureDeliveryStatus, "sent");
+    } finally {
+      cookie = savedCookie;
+      resetTransporterForTesting();
+    }
+  });
+
   await t.test("admin can list and update enquiry status", async () => {
     const list = await req("/api/enquiries?limit=50");
     assert.equal(list.status, 200);
@@ -518,7 +580,7 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
     Product.deleteMany({ slug: /^test-/ }),
     Variant.deleteMany({ sku: /^TEST-/ }),
     Video.deleteMany({ title: /^Test Video/ }),
-    Enquiry.deleteMany({ email: /^test-enquiry@/ }),
+    Enquiry.deleteMany({ email: /^test-enquiry/ }),
     Person.deleteMany({ name: /^Test Person/ })
   ]);
   server.close();

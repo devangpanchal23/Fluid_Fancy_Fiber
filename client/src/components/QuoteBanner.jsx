@@ -19,10 +19,10 @@ export default function QuoteBanner({ onOpenModal }) {
           </div>
           <div className="ff-quote-banner-actions">
             <button
-              type="button"
               data-magnetic
-              className="ff-btn ff-btn-primary blueprint"
+              type="button"
               onClick={() => onOpenModal("Request a quote")}
+              className="ff-btn ff-btn-primary blueprint"
             >
               <i className="corner tl" />
               <i className="corner tr" />

@@ -326,14 +326,33 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
   await t.test("spec sheet enquiry delivers brochure email with google drive link, handles failure and safe retry", async () => {
     const { setTransporterForTesting, resetTransporterForTesting } = await import("../utils/mailer.js");
     const sentMails = [];
+    const inFlight = new Set();
     let shouldFail = false;
+
+    const waitForInFlight = async () => {
+      // Yield to the event loop so unawaited fire-and-forget notifications can register
+      await new Promise((resolve) => setImmediate(resolve));
+      while (inFlight.size > 0) {
+        await Promise.all(Array.from(inFlight));
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+    };
+
     setTransporterForTesting({
       sendMail: async (opts) => {
         if (shouldFail) throw new Error("Simulated mailer outage");
-        sentMails.push(opts);
-        return { messageId: "test-msg-id" };
+        const p = (async () => {
+          sentMails.push(opts);
+          return { messageId: "test-msg-id" };
+        })();
+        inFlight.add(p);
+        p.finally(() => inFlight.delete(p));
+        return p;
       }
     });
+
+    const getCustomerBrochureMails = (targetEmail) =>
+      sentMails.filter((m) => m.to === targetEmail && /specification brochure/i.test(m.subject));
 
     const savedCookie = cookie;
     cookie = "";
@@ -345,21 +364,24 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
       const r = await req("/api/enquiries", { method: "POST", body: specBody, headers });
       assert.equal(r.status, 201);
       assert.match(r.data.message, /Sent/);
+      await waitForInFlight();
 
-      // Verify email was sent to customer with Google Drive link
-      assert.equal(sentMails.length, 1);
-      assert.equal(sentMails[0].to, "test-enquiry-spec@example.com");
-      assert.match(sentMails[0].html, /drive\.google\.com/);
-      assert.match(sentMails[0].subject, /specification brochure/i);
+      // Distinguish customer brochure email from background internal notifications
+      const customerMails = getCustomerBrochureMails(specBody.email);
+      assert.equal(customerMails.length, 1);
+      assert.equal(customerMails[0].to, "test-enquiry-spec@example.com");
+      assert.match(customerMails[0].html, /drive\.google\.com/);
+      assert.match(customerMails[0].subject, /specification brochure/i);
 
       // Verify database record has brochureDeliveryStatus = "sent"
       const record = await Enquiry.findById(r.data.id);
       assert.equal(record.brochureDeliveryStatus, "sent");
 
-      // Idempotent retry: should succeed with 201 but NOT send another email
+      // Idempotent retry: should succeed with 201 but NOT send duplicate customer brochure email
       const retry = await req("/api/enquiries", { method: "POST", body: specBody, headers });
       assert.equal(retry.status, 201);
-      assert.equal(sentMails.length, 1);
+      await waitForInFlight();
+      assert.equal(getCustomerBrochureMails(specBody.email).length, 1);
 
       // Transient failure & retry test:
       shouldFail = true;
@@ -368,19 +390,28 @@ test("admin auth + product/category/enquiry APIs", { skip: !dbAvailable && "No l
       const failRes = await req("/api/enquiries", { method: "POST", body: failBody, headers: failHeaders });
       assert.equal(failRes.status, 503);
       assert.equal(failRes.data.code, "EMAIL_DELIVERY_FAILED");
+      await waitForInFlight();
 
       const failRecord = await Enquiry.findOne({ email: failBody.email });
       assert.ok(failRecord);
       assert.equal(failRecord.brochureDeliveryStatus, "failed");
+      assert.equal(getCustomerBrochureMails(failBody.email).length, 0);
 
       // Now recover mailer and retry with same idempotency key
       shouldFail = false;
       const recoveredRes = await req("/api/enquiries", { method: "POST", body: failBody, headers: failHeaders });
       assert.equal(recoveredRes.status, 201);
+      await waitForInFlight();
+
       const recoveredRecord = await Enquiry.findOne({ email: failBody.email });
       assert.equal(recoveredRecord.brochureDeliveryStatus, "sent");
+      const recoveredCustomerMails = getCustomerBrochureMails(failBody.email);
+      assert.equal(recoveredCustomerMails.length, 1);
+      assert.match(recoveredCustomerMails[0].html, /drive\.google\.com/);
+      assert.match(recoveredCustomerMails[0].subject, /specification brochure/i);
     } finally {
       cookie = savedCookie;
+      await waitForInFlight();
       resetTransporterForTesting();
     }
   });

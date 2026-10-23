@@ -50,6 +50,9 @@ export default function MediaLibrary() {
   const [altDraft, setAltDraft] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null); // media
   const [forceDeleteInfo, setForceDeleteInfo] = useState(null); // { media, message }
+  const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
+  const [forceDeleteAllInfo, setForceDeleteAllInfo] = useState(null); // { message }
+  const [deletingAll, setDeletingAll] = useState(false);
 
   function load() {
     setLoading(true);
@@ -156,6 +159,30 @@ export default function MediaLibrary() {
     }
   }
 
+  async function confirmDeleteAll(force) {
+    setPendingDeleteAll(false);
+    setForceDeleteAllInfo(null);
+    setDeletingAll(true);
+    try {
+      const res = await api.delete("/media", force ? { force: "true" } : undefined);
+      toast.success(res?.message || "All media deleted from library.");
+      setItems([]);
+      setTotal(0);
+      setPages(1);
+      setPage(1);
+      setQ("");
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setForceDeleteAllInfo({ message: err.message });
+      } else {
+        toast.error(err.message || "Failed to delete media.");
+      }
+    } finally {
+      setDeletingAll(false);
+    }
+  }
+
   return (
     <div>
       <div className="ff-admin-toolbar">
@@ -166,7 +193,22 @@ export default function MediaLibrary() {
           onChange={(e) => resetPage(setQ)(e.target.value)}
           className="ff-admin-search"
         />
-        <button type="button" className="ff-btn ff-btn-primary" onClick={() => inputRef.current?.click()} disabled={uploading}>
+        <button
+          type="button"
+          className="ff-btn ff-btn-danger"
+          onClick={() => setPendingDeleteAll(true)}
+          disabled={loading || uploading || deletingAll || total === 0}
+          title={total === 0 ? "No media to delete" : "Permanently delete all media from library"}
+        >
+          {deletingAll && <span className="ff-btn-spinner" />}
+          <span>{deletingAll ? "Deleting all…" : "Delete All Media"}</span>
+        </button>
+        <button
+          type="button"
+          className="ff-btn ff-btn-primary"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading || deletingAll}
+        >
           {uploading && <span className="ff-btn-spinner" />}
           <span>{uploading ? "Uploading…" : "+ Upload images"}</span>
         </button>
@@ -223,7 +265,12 @@ export default function MediaLibrary() {
                   </button>
                 )}
               </div>
-              <button type="button" className="ff-admin-image-remove ff-media-card-delete" onClick={() => setPendingDelete(media)}>
+              <button
+                type="button"
+                className="ff-admin-image-remove ff-media-card-delete"
+                onClick={() => setPendingDelete(media)}
+                disabled={deletingAll}
+              >
                 Delete
               </button>
             </li>
@@ -264,6 +311,28 @@ export default function MediaLibrary() {
         danger
         onConfirm={() => confirmDelete(true)}
         onCancel={() => setForceDeleteInfo(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingDeleteAll}
+        title="Delete all media?"
+        message={`Are you sure you want to permanently delete all ${total} media item${total === 1 ? "" : "s"} from the library? This action cannot be undone.`}
+        confirmLabel="Delete All Media"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={() => confirmDeleteAll(false)}
+        onCancel={() => setPendingDeleteAll(false)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(forceDeleteAllInfo)}
+        title="Some images are still in use"
+        message={forceDeleteAllInfo ? `${forceDeleteAllInfo.message} Deleting anyway will remove them from all products, categories, and other items.` : ""}
+        confirmLabel="Delete all anyway"
+        cancelLabel="Keep them"
+        danger
+        onConfirm={() => confirmDeleteAll(true)}
+        onCancel={() => setForceDeleteAllInfo(null)}
       />
     </div>
   );

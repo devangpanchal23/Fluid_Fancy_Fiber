@@ -29,13 +29,17 @@ test("Media Library API", { skip: !dbAvailable && "No local MongoDB reachable" }
   const Product = (await import("../models/Product.js")).default;
   const Variant = (await import("../models/Variant.js")).default;
   const Media = (await import("../models/Media.js")).default;
+  const VideoAsset = (await import("../models/VideoAsset.js")).default;
+  const Video = (await import("../models/Video.js")).default;
 
   await Promise.all([
     Admin.deleteMany({ email: /^test-media-admin@/ }),
     Category.deleteMany({ slug: /^test-media-/ }),
     Product.deleteMany({ slug: /^test-media-/ }),
     Variant.deleteMany({ sku: /^TEST-MEDIA-/ }),
-    Media.deleteMany({ originalName: /^test-media-/ })
+    Media.deleteMany({ originalName: /^test-media-/ }),
+    VideoAsset.deleteMany({ originalName: /^test-media-/ }),
+    Video.deleteMany({ title: /^test-media-/ })
   ]);
 
   const admin = new Admin({ email: "test-media-admin@example.com", name: "Test Media Admin" });
@@ -233,13 +237,161 @@ test("Media Library API", { skip: !dbAvailable && "No local MongoDB reachable" }
     assert.equal(listed.data.data.items.length, 0);
   });
 
+  await t.test("rejects unauthenticated request to delete all media", async () => {
+    const savedCookie = cookie;
+    cookie = "";
+    const r = await req("/api/media", { method: "DELETE" });
+    cookie = savedCookie;
+    assert.equal(r.status, 401);
+  });
+
+  await t.test("delete all media blocks deletion with 409 when media items are in use", async () => {
+    const usedUpload = await uploadMediaFile("test-media-used.png");
+    await uploadMediaFile("test-media-unused-bulk.png");
+    const usedMediaId = usedUpload.data.data.media._id;
+    const usedMediaUrl = usedUpload.data.data.media.url;
+
+    await req(`/api/products/${productId}`, {
+      method: "PUT",
+      body: { images: [{ url: usedMediaUrl, media: usedMediaId, alt: "Used image" }] }
+    });
+
+    const fakeGridFsId = new mongoose.Types.ObjectId();
+    const videoAsset = await VideoAsset.create({
+      url: `/video-uploads/${fakeGridFsId}`,
+      gridFsId: fakeGridFsId,
+      originalName: "test-media-video.mp4",
+      mimeType: "video/mp4",
+      size: 1024
+    });
+
+    const r = await req("/api/media", { method: "DELETE" });
+    assert.equal(r.status, 409);
+    assert.match(r.data.message, /currently in use/i);
+
+    const [mediaCount, productFetched, videoAssetFetched] = await Promise.all([
+      Media.countDocuments({ originalName: /^test-media-/ }),
+      Product.findById(productId),
+      VideoAsset.findById(videoAsset._id)
+    ]);
+    assert.ok(mediaCount >= 2);
+    assert.equal(productFetched.images.length, 1);
+    assert.ok(videoAssetFetched);
+
+    await VideoAsset.deleteOne({ _id: videoAsset._id });
+  });
+
+  await t.test("delete all media with force=true deletes media, unassigns references, and preserves parent entities", async () => {
+    const fakeGridFsId = new mongoose.Types.ObjectId();
+    const videoAsset = await VideoAsset.create({
+      url: `/video-uploads/${fakeGridFsId}`,
+      gridFsId: fakeGridFsId,
+      originalName: "test-media-protected-video.mp4",
+      mimeType: "video/mp4",
+      size: 2048
+    });
+
+    const r = await req("/api/media?force=true", { method: "DELETE" });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.success, true);
+    assert.ok(r.data.data.deletedCount >= 2);
+
+    const remainingMedia = await Media.countDocuments({ originalName: /^test-media-/ });
+    assert.equal(remainingMedia, 0);
+
+    const product = await Product.findById(productId);
+    assert.ok(product);
+    assert.deepEqual(product.images, []);
+
+    const category = await Category.findById(categoryId);
+    assert.ok(category);
+
+    const adminDoc = await Admin.findById(admin._id);
+    assert.ok(adminDoc);
+
+    const videoDoc = await VideoAsset.findById(videoAsset._id);
+    assert.ok(videoDoc);
+    assert.equal(videoDoc.originalName, "test-media-protected-video.mp4");
+
+    await VideoAsset.deleteOne({ _id: videoAsset._id });
+  });
+
+  await t.test("delete all media on empty library succeeds safely with 0 deletedCount", async () => {
+    const r = await req("/api/media", { method: "DELETE" });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.success, true);
+    assert.equal(r.data.data.deletedCount, 0);
+  });
+
+  await t.test("delete all media protects and handles Video thumbnails properly", async () => {
+    const thumbUpload = await uploadMediaFile("test-media-video-thumb.png");
+    const thumbMediaId = thumbUpload.data.data.media._id;
+    const thumbMediaUrl = thumbUpload.data.data.media.url;
+
+    const videoWithThumb = await Video.create({
+      title: "test-media-video-with-thumb",
+      description: "Test video description",
+      url: "https://example.com/video1.mp4",
+      source: "drive",
+      embedType: "iframe",
+      thumbnail: { url: thumbMediaUrl, alt: "Video poster" },
+      status: "published"
+    });
+
+    const unrelatedVideo = await Video.create({
+      title: "test-media-unrelated-video",
+      description: "Unrelated video description",
+      url: "https://example.com/video2.mp4",
+      source: "drive",
+      embedType: "iframe",
+      thumbnail: { url: "https://images.example.com/external-poster.jpg", alt: "External poster" },
+      status: "draft"
+    });
+
+    const rBlocked = await req("/api/media", { method: "DELETE" });
+    assert.equal(rBlocked.status, 409);
+    assert.match(rBlocked.data.message, /currently in use/i);
+
+    const [mediaStillThere, videoStillThere] = await Promise.all([
+      Media.findById(thumbMediaId),
+      Video.findById(videoWithThumb._id)
+    ]);
+    assert.ok(mediaStillThere);
+    assert.equal(videoStillThere.thumbnail.url, thumbMediaUrl);
+
+    const rForce = await req("/api/media?force=true", { method: "DELETE" });
+    assert.equal(rForce.status, 200);
+    assert.equal(rForce.data.success, true);
+
+    const mediaDeleted = await Media.findById(thumbMediaId);
+    assert.equal(mediaDeleted, null);
+
+    const videoUpdated = await Video.findById(videoWithThumb._id);
+    assert.ok(videoUpdated);
+    assert.equal(videoUpdated.title, "test-media-video-with-thumb");
+    assert.equal(videoUpdated.description, "Test video description");
+    assert.equal(videoUpdated.url, "https://example.com/video1.mp4");
+    assert.equal(videoUpdated.source, "drive");
+    assert.equal(videoUpdated.status, "published");
+    assert.equal(videoUpdated.thumbnail, null);
+
+    const unrelatedUpdated = await Video.findById(unrelatedVideo._id);
+    assert.ok(unrelatedUpdated);
+    assert.equal(unrelatedUpdated.thumbnail.url, "https://images.example.com/external-poster.jpg");
+    assert.equal(unrelatedUpdated.title, "test-media-unrelated-video");
+
+    await Video.deleteMany({ title: /^test-media-/ });
+  });
+
   // Cleanup
   await Promise.all([
     Admin.deleteMany({ email: /^test-media-admin@/ }),
     Category.deleteMany({ slug: /^test-media-/ }),
     Product.deleteMany({ slug: /^test-media-/ }),
     Variant.deleteMany({ sku: /^TEST-MEDIA-/ }),
-    Media.deleteMany({ originalName: /^test-media-/ })
+    Media.deleteMany({ originalName: /^test-media-/ }),
+    VideoAsset.deleteMany({ originalName: /^test-media-/ }),
+    Video.deleteMany({ title: /^test-media-/ })
   ]);
   server.close();
 });

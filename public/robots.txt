@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 
-Sitemap: https://www.fluidfancyfibre.com/sitemap.xml
+Sitemap: https://www.fluidfancyenterprise.com/sitemap.xml

@@ -68,13 +68,13 @@ export default function PageMetadata() {
     upsertMeta('meta[property="og:image:alt"]', { property: "og:image:alt", content: "Fluid Fancy Fibre LLP brand mark" });
     upsertMeta('meta[name="twitter:card"]', { name: "twitter:card", content: "summary_large_image" });
 
-    const configuredSite = import.meta.env.VITE_SITE_URL;
-    let siteBase = "";
+    const configuredSite = import.meta.env.VITE_SITE_URL || "https://www.fluidfancyenterprise.com";
+    let siteBase = "https://www.fluidfancyenterprise.com";
     try {
       const parsedSite = new URL(configuredSite);
       if (parsedSite.protocol === "https:") siteBase = parsedSite.origin;
     } catch {
-      siteBase = "";
+      siteBase = "https://www.fluidfancyenterprise.com";
     }
     const image = document.head.querySelector('meta[property="og:image"]')?.content;
     if (image && siteBase) upsertMeta('meta[name="twitter:image"]', { name: "twitter:image", content: new URL(image, siteBase).href });

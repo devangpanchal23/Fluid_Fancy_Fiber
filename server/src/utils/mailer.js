@@ -103,7 +103,7 @@ export async function sendEnquiryNotification(enquiry) {
             .join("")}
         </table>
         <p style="margin-top: 20px; color: #6a6357; font-size: 12px;">
-          Submitted ${new Date(enquiry.createdAt || Date.now()).toLocaleString()} via fluidfancyfibre.com
+          Submitted ${new Date(enquiry.createdAt || Date.now()).toLocaleString()} via fluidfancyenterprise.com
         </p>
       </div>
     `;

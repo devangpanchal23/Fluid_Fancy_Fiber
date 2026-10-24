@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import WhyUs from "./components/WhyUs";
@@ -28,9 +29,32 @@ export default function App() {
   const [modal, setModal] = useState({ open: false, title: "", lineName: "" });
   const [preloaderDone, setPreloaderDone] = useState(false);
   const { scroll, shrink, showTop } = useScrollProgress({ shrinkAt: 90, topAt: 0.07 });
+  const location = useLocation();
 
   useReveal({ current: document });
   useMagnetic({ current: document });
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    const path = location.pathname.replace(/\/$/, "");
+    let targetId = "";
+    if (hash) {
+      targetId = hash.replace("#", "");
+    } else if (path === "/products" || path === "/catalog") {
+      targetId = "catalogue";
+    } else if (path === "/about") {
+      targetId = "mill";
+    } else if (path === "/contact") {
+      targetId = "contact";
+    }
+
+    if (targetId) {
+      const scrollTimer = setTimeout(() => {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [location.pathname]);
 
   const openModal = useCallback((title, lineName = "") => {
     setModal({ open: true, title, lineName });

@@ -38,8 +38,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <PageMetadata />
         <Routes>
           <Route path="/" element={<App />} />
+          <Route path="/products" element={<App />} />
+          <Route path="/catalog" element={<App />} />
+          <Route path="/about" element={<App />} />
+          <Route path="/contact" element={<App />} />
           <Route path="/privacy" element={<Suspense fallback={<div className="ff-section" aria-busy="true">Loading page…</div>}><PrivacyPage /></Suspense>} />
+          <Route path="/privacy-policy" element={<Suspense fallback={<div className="ff-section" aria-busy="true">Loading page…</div>}><PrivacyPage /></Suspense>} />
           <Route path="/terms" element={<Suspense fallback={<div className="ff-section" aria-busy="true">Loading page…</div>}><TermsPage /></Suspense>} />
+          <Route path="/terms-of-service" element={<Suspense fallback={<div className="ff-section" aria-busy="true">Loading page…</div>}><TermsPage /></Suspense>} />
           <Route
             path="/admin/*"
             element={

@@ -12,11 +12,20 @@ import variantRoutes from "./routes/variantRoutes.js";
 import videoRoutes from "./routes/videoRoutes.js";
 import videoAssetRoutes from "./routes/videoAssetRoutes.js";
 import coneProductRoutes from "./routes/coneProductRoutes.js";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { connectDB, isDbConnected } from "./config/db.js";
 import { serveImage } from "./controllers/uploadController.js";
 import { streamVideo } from "./controllers/videoStreamController.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const clientDistPath = path.resolve(__dirname, "../../client/dist");
+const clientPublicPath = path.resolve(__dirname, "../../client/public");
+const rootPublicPath = path.resolve(__dirname, "../../public");
 
 const configuredOrigins = (process.env.CLIENT_ORIGIN || "")
   .split(",")
@@ -155,11 +164,42 @@ app.get(["/api/robots.txt", "/robots.txt"], (req, res) => {
 });
 
 app.get(["/api/sitemap.xml", "/sitemap.xml"], (req, res) => {
+  const staticSitemap = [
+    path.join(clientPublicPath, "sitemap.xml"),
+    path.join(clientDistPath, "sitemap.xml"),
+    path.join(rootPublicPath, "sitemap.xml")
+  ].find((p) => fs.existsSync(p));
+
+  if (staticSitemap) {
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return res.sendFile(staticSitemap);
+  }
+
   const origin = requestOrigin(req);
-  const urls = ["/", "/privacy", "/terms"];
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls
-    .map((path) => `<url><loc>${origin}${path}</loc></url>`)
-    .join("")}</urlset>`;
+  const today = new Date().toISOString().split("T")[0];
+  const routes = [
+    { path: "/", priority: "1.0", changefreq: "weekly" },
+    { path: "/products", priority: "0.9", changefreq: "weekly" },
+    { path: "/catalog", priority: "0.8", changefreq: "weekly" },
+    { path: "/about", priority: "0.8", changefreq: "monthly" },
+    { path: "/contact", priority: "0.8", changefreq: "monthly" },
+    { path: "/privacy", priority: "0.5", changefreq: "yearly" },
+    { path: "/terms", priority: "0.5", changefreq: "yearly" }
+  ];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${routes
+  .map(
+    (r) => `  <url>
+    <loc>${origin}${r.path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${r.changefreq}</changefreq>
+    <priority>${r.priority}</priority>
+  </url>`
+  )
+  .join("\n")}
+</urlset>`;
   res.type("application/xml").set("Cache-Control", "public, max-age=3600").send(xml);
 });
 
@@ -206,6 +246,29 @@ app.use("/api/variants", variantRoutes);
 app.use("/api/videos", videoRoutes);
 app.use("/api/video-assets", videoAssetRoutes);
 app.use("/api/cone-library", coneProductRoutes);
+
+// Static file serving configured before catch-all 404 routes
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath, { index: false }));
+}
+if (fs.existsSync(clientPublicPath)) {
+  app.use(express.static(clientPublicPath, { index: false }));
+}
+if (fs.existsSync(rootPublicPath)) {
+  app.use(express.static(rootPublicPath, { index: false }));
+}
+
+// Client SPA route fallback for non-API GET requests
+app.get("*", (req, res, next) => {
+  if (req.method !== "GET" || req.path.startsWith("/api") || req.path.startsWith("/uploads") || req.path.startsWith("/video-uploads")) {
+    return next();
+  }
+  const indexPath = path.join(clientDistPath, "index.html");
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  next();
+});
 
 app.use(notFound);
 app.use(errorHandler);

@@ -6,11 +6,35 @@ const PAGE_META = {
     title: "Fluid Fancy Fibre LLP | Consistent to the last metre.",
     description: "Mono, lino and specialty yarn counts with lot-level traceability and technician sign-off from Fluid Fancy Fibre LLP."
   },
+  "/products": {
+    title: "Products & Yarn Catalogue | Fluid Fancy Fibre LLP",
+    description: "Mono, lino and specialty yarn counts with lot-level traceability and technician sign-off from Fluid Fancy Fibre LLP."
+  },
+  "/catalog": {
+    title: "Products & Yarn Catalogue | Fluid Fancy Fibre LLP",
+    description: "Mono, lino and specialty yarn counts with lot-level traceability and technician sign-off from Fluid Fancy Fibre LLP."
+  },
+  "/about": {
+    title: "About Us & Mill | Fluid Fancy Fibre LLP",
+    description: "Woman-led, lot-level traceability, ring-spun yarn since 2005. Consistent to the last metre."
+  },
+  "/contact": {
+    title: "Contact Us | Fluid Fancy Fibre LLP",
+    description: "Get in touch with Fluid Fancy Fibre LLP for technical queries, quotations, and sample requests."
+  },
   "/privacy": {
     title: "Privacy notice | Fluid Fancy Fibre LLP",
     description: "How Fluid Fancy Fibre uses and protects information submitted through its website."
   },
+  "/privacy-policy": {
+    title: "Privacy notice | Fluid Fancy Fibre LLP",
+    description: "How Fluid Fancy Fibre uses and protects information submitted through its website."
+  },
   "/terms": {
+    title: "Website terms | Fluid Fancy Fibre LLP",
+    description: "Terms for using the Fluid Fancy Fibre website and requesting product information or quotations."
+  },
+  "/terms-of-service": {
     title: "Website terms | Fluid Fancy Fibre LLP",
     description: "Terms for using the Fluid Fancy Fibre website and requesting product information or quotations."
   }
